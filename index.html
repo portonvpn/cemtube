@@ -4,157 +4,130 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cemtube - Zoro(dev)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Inter:wght@800&display=swap" rel="stylesheet">
     <style>
-        :root { --orange: #ff9000; --bg: #000; --nav: #0f0f0f; --text: #fff; }
+        :root { --orange: #ff9000; --bg: #0f0f0f; --nav: rgba(15, 15, 15, 0.95); --text: #fff; --border: rgba(255,255,255,0.08); }
         * { box-sizing: border-box; }
         body { background: var(--bg); color: var(--text); font-family: 'Roboto', sans-serif; margin: 0; padding-bottom: 70px; overflow-x: hidden; }
-        
-        nav { background: var(--nav); height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; position: fixed; top: 0; width: 100%; z-index: 1000; border-bottom: 1px solid #222; }
+        nav { background: var(--nav); backdrop-filter: blur(12px); height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: fixed; top: 0; width: 100%; z-index: 1000; border-bottom: 1px solid var(--border); }
         .logo { font-size: 20px; font-weight: bold; color: white; text-decoration: none; display: flex; align-items: center; }
-        .logo span { background: var(--orange); color: #000; padding: 2px 5px; border-radius: 4px; margin-left: 4px; font-size: 16px; }
-        
-        .user-box { display: flex; align-items: center; gap: 10px; }
-        .logout-btn { background: #222; border: 1px solid #444; color: #ff4444; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; }
-
-        aside { width: 210px; background: var(--bg); height: 100vh; position: fixed; top: 56px; border-right: 1px solid #111; z-index: 999; }
-        .side-item { padding: 15px 24px; cursor: pointer; display: flex; align-items: center; gap: 15px; color: #aaa; font-size: 14px; }
-        .side-item:hover { color: var(--orange); background: #1a1a1a; }
-
-        main { margin-left: 210px; margin-top: 70px; padding: 15px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-        .card { cursor: pointer; transition: 0.2s; }
-        .v-thumb { width: 100%; aspect-ratio: 16/9; background: #222; border-radius: 12px; object-fit: cover; border: 1px solid #333; }
-        .v-meta { display: flex; gap: 12px; padding: 12px 5px; }
-        .v-avatar { width: 36px; height: 36px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--orange); border: 1px solid #444; }
-
+        .logo span { background: var(--orange); color: #000; padding: 2px 6px; border-radius: 4px; margin-left: 5px; font-size: 15px; }
+        .user-controls { display: flex; align-items: center; gap: 12px; }
+        .logout-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1); color: #ff5555; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        aside { width: 220px; background: var(--bg); height: 100vh; position: fixed; top: 56px; border-right: 1px solid var(--border); z-index: 999; }
+        .side-item { padding: 14px 24px; cursor: pointer; display: flex; align-items: center; gap: 15px; color: #888; font-size: 14px; }
+        main { margin-left: 220px; margin-top: 75px; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { cursor: pointer; transition: 0.3s cubic-bezier(0.2, 1, 0.3, 1); }
+        .v-thumb-wrap { width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; position: relative; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+        .v-thumb-letter { font-family: 'Inter', sans-serif; font-size: 64px; font-weight: 800; color: rgba(255,255,255,0.25); text-transform: uppercase; z-index: 2; }
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .box { background: #181818; padding: 30px; border-radius: 20px; width: 420px; text-align: center; border: 1px solid #333; }
+        .prog-bg { width: 100%; height: 8px; background: #222; margin: 15px 0; border-radius: 4px; display: none; overflow: hidden; }
+        .prog-bar { width: 0%; height: 100%; background: var(--orange); box-shadow: 0 0 15px var(--orange); transition: 0.3s; }
+        .status-msg { font-size: 11px; color: var(--orange); margin-top: 8px; font-family: monospace; display: block; }
         #player-page { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 2000; overflow-y: auto; }
-        .player-inner { max-width: 1000px; margin: 0 auto; padding-bottom: 50px; }
-        .video-wrapper { width: 100%; aspect-ratio: 16/9; background: #111; margin-top: 10px; border-radius: 12px; overflow: hidden; }
+        .player-layout { display: grid; grid-template-columns: 1fr 360px; gap: 24px; max-width: 1500px; margin: 0 auto; padding: 20px; }
+        .video-wrapper { width: 100%; aspect-ratio: 16/9; background: #111; border-radius: 16px; overflow: hidden; }
         iframe { width: 100%; height: 100%; border: none; }
-        
-        .p-details { padding: 20px; }
-        .p-title { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
-        .p-channel { display: flex; align-items: center; gap: 12px; border-top: 1px solid #222; padding-top: 15px; }
-        .checkmark { color: #3ea6ff; font-size: 11px; margin-left: 3px; }
-
-        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; align-items: center; justify-content: center; }
-        .box { background: #1b1b1b; padding: 25px; border-radius: 15px; width: 400px; text-align: center; border: 1px solid #333; }
-        .prog-bg { width: 100%; height: 6px; background: #333; margin: 15px 0; border-radius: 3px; display: none; overflow: hidden; }
-        .prog-bar { width: 0%; height: 100%; background: var(--orange); }
-
-        .b-nav { display: none; position: fixed; bottom: 0; width: 100%; background: #000; height: 60px; border-top: 1px solid #222; justify-content: space-around; align-items: center; z-index: 1001; }
-
-        @media (max-width: 768px) { aside { display: none; } main { margin-left: 0; } .b-nav { display: flex; } .grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { aside { display: none; } main { margin-left: 0; } }
     </style>
 </head>
 <body>
 
 <nav>
-    <a href="#" class="logo">Cem<span>tube</span></a>
-    <div class="user-box">
-        <span id="user-display" style="font-size: 11px; color: #888;"></span>
+    <a href="#" class="logo" onclick="location.reload()">Cem<span>tube</span></a>
+    <div class="user-controls">
+        <span id="user-display" style="font-size: 13px; color: #888;"></span>
         <button class="logout-btn" onclick="logout()">LOGOUT</button>
     </div>
 </nav>
 
 <aside>
-    <div class="side-item" onclick="loadHome()">🏠 Home</div>
+    <div class="side-item" onclick="location.reload()">🏠 Home</div>
     <div class="side-item" onclick="openModal()">📤 Upload</div>
 </aside>
 
 <main><div class="grid" id="v-grid">Loading Hub...</div></main>
 
-<div class="b-nav">
-    <span onclick="loadHome()" style="font-size:24px;">🏠</span>
-    <span onclick="openModal()" style="font-size:24px;">➕</span>
-    <span onclick="logout()" style="font-size:24px;">👤</span>
-</div>
-
 <div id="modal">
     <div class="box">
-        <h3 style="color:var(--orange); margin:0;">Upload Video</h3>
-        <p style="font-size:10px; color:#666; margin-bottom:15px;">Stable Upload Mode (Max 50MB)</p>
-        <input type="file" id="vid-input" accept="video/*" style="color:white; margin: 10px 0; width: 100%;">
-        <div class="prog-bg" id="prog-bg"><div class="prog-bar" id="prog-bar" style="width: 0%"></div></div>
-        <button id="up-btn" onclick="handleUpload()" style="background:white; color:black; border:none; padding:10px 25px; border-radius:20px; font-weight:bold; cursor:pointer; width:100%;">Publish</button>
-        <p onclick="closeModal()" style="color:gray; cursor:pointer; margin-top:15px; font-size:12px;">Cancel</p>
+        <h3 style="color:var(--orange); margin-bottom:20px;">Upload Video</h3>
+        <input type="file" id="vid-input" accept="video/*" style="color:white; margin-bottom: 20px; width: 100%;">
+        <div class="prog-bg" id="prog-bg"><div class="prog-bar" id="prog-bar"></div></div>
+        <span id="status-feed" class="status-msg"></span>
+        <button id="up-btn" onclick="handleUpload()" style="background:white; color:black; border:none; padding:14px; border-radius:25px; font-weight:bold; cursor:pointer; width:100%;">Publish Now</button>
+        <p onclick="closeModal()" style="color:gray; cursor:pointer; margin-top:20px; font-size:12px;">Cancel</p>
     </div>
 </div>
 
 <div id="player-page">
-    <div class="player-inner">
-        <div style="padding: 15px;"><span onclick="closePlayer()" style="cursor:pointer; font-size: 30px; color:white;">❌</span></div>
-        <div class="video-wrapper" id="p-target"></div>
-        <div class="p-details">
-            <div class="p-title" id="p-title">Video Title</div>
-            <div class="p-channel">
-                <div class="v-avatar" id="chan-avatar">Z</div>
-                <div>
-                    <div style="font-weight:bold; font-size:15px;" id="chan-name">Zoro(dev)<span class="checkmark">✔</span></div>
-                    <div style="color:#888; font-size:12px;">0 subscribers</div>
-                </div>
-            </div>
-            <div style="background:#111; padding:15px; border-radius:12px; margin-top:20px; font-size:13px; line-height:1.6; color:#ddd;">
+    <div class="player-layout">
+        <div>
+            <div style="padding: 20px 0;"><span onclick="closePlayer()" style="cursor:pointer; color:#888;">← Back</span></div>
+            <div class="video-wrapper" id="p-target"></div>
+            <h2 id="p-title" style="margin-top:20px;"></h2>
+            <div style="background:#151515; padding:20px; border-radius:12px; font-size:13px; color:#bbb; border: 1px solid var(--border);">
                 <p>5.6 beta</p>
                 <p style="color:#666;">Thi video is being streamed from my gdrive so performance may varie (5.6 beta)</p>
             </div>
         </div>
+        <div id="next-list"></div>
     </div>
 </div>
 
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyzZ3G1aYQeI957QTvpPOKMoZsHF5-ytJyNQWy02EVpe2MNl4daunHGpR15HQE06u4t/exec"; 
-    const THUMB = "https://raw.githubusercontent.com/portonvpn/cemtube/main/t.png";
-    
+    let globalVideos = [];
     let user = localStorage.getItem('cem_user') || prompt("Channel Name:");
     if(!user) user = "Zoro";
     localStorage.setItem('cem_user', user);
     document.getElementById('user-display').innerText = user;
 
     function logout() { localStorage.removeItem('cem_user'); location.reload(); }
+    function getCol(name) {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        const h = Math.abs(hash) % 360;
+        return { main: `hsl(${h}, 65%, 45%)`, grad: `linear-gradient(135deg, hsl(${h}, 70%, 40%) 0%, hsl(${(h+40)%360}, 60%, 20%) 100%)` };
+    }
 
     async function loadHome() {
         const grid = document.getElementById('v-grid');
         try {
             const res = await fetch(SCRIPT_URL);
-            let data = await res.json();
-            // Data is already reversed in Code.gs, but we do it here just to be safe
-            grid.innerHTML = data.map(v => {
-                const isZoro = v.uploader.toLowerCase().includes('zoro');
-                const name = isZoro ? 'Zoro(dev)' : v.uploader;
-                return `
-                <div class="card" onclick="play('${v.id}','${v.name}','${name}', ${isZoro})">
-                    <img class="v-thumb" src="${THUMB}">
-                    <div class="v-meta">
-                        <div class="v-avatar">${name.charAt(0).toUpperCase()}</div>
-                        <div>
-                            <div style="font-weight:bold; font-size:14px;">${v.name}</div>
-                            <div style="color:#aaa; font-size:11px;">${name}${isZoro ? '<span class="checkmark">✔</span>' : ''}</div>
-                        </div>
+            globalVideos = (await res.json()).reverse(); 
+            grid.innerHTML = globalVideos.map(v => {
+                const colors = getCol(v.uploader);
+                return `<div class="card" onclick="play('${v.id}','${v.name}','${v.uploader}')">
+                    <div class="v-thumb-wrap" style="background: ${colors.grad}"><div class="v-thumb-letter">${v.name.charAt(0)}</div></div>
+                    <div style="display:flex; gap:12px; padding:12px;">
+                        <div style="width:38px;height:38px;border-radius:50%;background:${colors.main};display:flex;align-items:center;justify-content:center;font-weight:bold;">${v.uploader.charAt(0)}</div>
+                        <div><div style="font-weight:bold;">${v.name}</div><div style="font-size:12px; color:#888;">${v.uploader}</div></div>
                     </div>
                 </div>`;
             }).join('');
-        } catch(e) { grid.innerHTML = "Sync Error. Check Deployment."; }
+        } catch(e) { grid.innerHTML = "Error Loading Feed."; }
     }
 
     function handleUpload() {
         const file = document.getElementById('vid-input').files[0];
-        if(!file) return alert("Select video!");
-        if(file.size > 50 * 1024 * 1024) return alert("File too big for stable mode (Max 50MB). Use Desktop for larger files.");
+        if(!file) return alert("Select file!");
 
         const btn = document.getElementById('up-btn');
-        const bar = document.querySelector('.prog-bar');
+        const bar = document.getElementById('prog-bar');
         const bg = document.getElementById('prog-bg');
+        const status = document.getElementById('status-feed');
         
-        btn.disabled = true; 
-        btn.innerText = "Converting...";
+        btn.disabled = true;
         bg.style.display = 'block';
-        bar.style.width = "30%";
+        bar.style.width = "20%";
+        status.innerText = "Step 1/2: Converting to string...";
 
         const reader = new FileReader();
         reader.onload = function() {
-            bar.style.width = "60%";
-            btn.innerText = "Publishing...";
+            bar.style.width = "50%";
+            status.innerText = "Step 2/2: Sending data to Google Drive...";
             
             const formData = new URLSearchParams({
                 videoData: reader.result.split(',')[1],
@@ -165,35 +138,28 @@
 
             fetch(SCRIPT_URL, { method: "POST", body: formData })
             .then(res => res.text())
-            .then(data => {
+            .then(() => {
                 bar.style.width = "100%";
-                btn.innerText = "Success!";
+                status.innerText = "Success! Reloading...";
                 setTimeout(() => location.reload(), 1000);
             })
-            .catch(err => {
-                alert("Upload failed.");
+            .catch(() => {
+                alert("Failed. Check terminal or Apps Script logs.");
                 btn.disabled = false;
-                btn.innerText = "Publish";
+                bg.style.display = 'none';
             });
         };
         reader.readAsDataURL(file);
     }
 
-    function play(id, title, uploader, isZoro) {
+    function play(id, title, uploader) {
         document.getElementById('player-page').style.display = 'block';
         document.getElementById('p-title').innerText = title;
-        document.getElementById('chan-name').innerHTML = uploader + (isZoro ? '<span class="checkmark">✔</span>' : '');
-        document.getElementById('chan-avatar').innerText = uploader.charAt(0).toUpperCase();
         document.getElementById('p-target').innerHTML = `<iframe src="https://drive.google.com/file/d/${id}/preview" allow="autoplay" allowfullscreen></iframe>`;
         document.body.style.overflow = "hidden";
     }
 
-    function closePlayer() { 
-        document.getElementById('player-page').style.display = 'none'; 
-        document.getElementById('p-target').innerHTML = ""; 
-        document.body.style.overflow = "auto";
-    }
-    
+    function closePlayer() { document.getElementById('player-page').style.display = 'none'; document.getElementById('p-target').innerHTML = ""; document.body.style.overflow = "auto"; }
     function openModal() { document.getElementById('modal').style.display = 'flex'; }
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
     loadHome();
