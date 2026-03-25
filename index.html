@@ -22,7 +22,7 @@
 
         main { margin-left: 210px; margin-top: 70px; padding: 15px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-        .card { cursor: pointer; }
+        .card { cursor: pointer; transition: 0.2s; }
         .v-thumb { width: 100%; aspect-ratio: 16/9; background: #222; border-radius: 12px; object-fit: cover; border: 1px solid #333; }
         .v-meta { display: flex; gap: 12px; padding: 12px 5px; }
         .v-avatar { width: 36px; height: 36px; background: #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--orange); border: 1px solid #444; }
@@ -72,9 +72,10 @@
 
 <div id="modal">
     <div class="box">
-        <h3 style="color:var(--orange); margin:0;">Upload</h3>
-        <input type="file" id="vid-input" accept="video/*" style="color:white; margin: 20px 0; width: 100%;">
-        <div class="prog-bg" id="prog-bg"><div class="prog-bar" id="prog-bar"></div></div>
+        <h3 style="color:var(--orange); margin:0;">Upload Video</h3>
+        <p style="font-size:10px; color:#666; margin-bottom:15px;">Stable Upload Mode (Max 50MB)</p>
+        <input type="file" id="vid-input" accept="video/*" style="color:white; margin: 10px 0; width: 100%;">
+        <div class="prog-bg" id="prog-bg"><div class="prog-bar" id="prog-bar" style="width: 0%"></div></div>
         <button id="up-btn" onclick="handleUpload()" style="background:white; color:black; border:none; padding:10px 25px; border-radius:20px; font-weight:bold; cursor:pointer; width:100%;">Publish</button>
         <p onclick="closeModal()" style="color:gray; cursor:pointer; margin-top:15px; font-size:12px;">Cancel</p>
     </div>
@@ -94,14 +95,15 @@
                 </div>
             </div>
             <div style="background:#111; padding:15px; border-radius:12px; margin-top:20px; font-size:13px; line-height:1.6; color:#ddd;">
-                <p>Thi video is being streamed from my gdrive so performance may varie (5.6 beta)</p>
+                <p>5.6 beta</p>
+                <p style="color:#666;">Thi video is being streamed from my gdrive so performance may varie (5.6 beta)</p>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzLwRLoSad_nhxnkJvVEyVN6iZd5G24jIacKEFzm_7S-70UJRUb4H3Q2GmyKew6Cs55/exec"; 
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyzZ3G1aYQeI957QTvpPOKMoZsHF5-ytJyNQWy02EVpe2MNl4daunHGpR15HQE06u4t/exec"; 
     const THUMB = "https://raw.githubusercontent.com/portonvpn/cemtube/main/t.png";
     
     let user = localStorage.getItem('cem_user') || prompt("Channel Name:");
@@ -116,8 +118,7 @@
         try {
             const res = await fetch(SCRIPT_URL);
             let data = await res.json();
-            data.reverse(); // Newest first
-
+            // Data is already reversed in Code.gs, but we do it here just to be safe
             grid.innerHTML = data.map(v => {
                 const isZoro = v.uploader.toLowerCase().includes('zoro');
                 const name = isZoro ? 'Zoro(dev)' : v.uploader;
@@ -133,31 +134,49 @@
                     </div>
                 </div>`;
             }).join('');
-        } catch(e) { grid.innerHTML = "Sync Error."; }
+        } catch(e) { grid.innerHTML = "Sync Error. Check Deployment."; }
     }
 
-    async function handleUpload() {
+    function handleUpload() {
         const file = document.getElementById('vid-input').files[0];
         if(!file) return alert("Select video!");
+        if(file.size > 50 * 1024 * 1024) return alert("File too big for stable mode (Max 50MB). Use Desktop for larger files.");
+
         const btn = document.getElementById('up-btn');
         const bar = document.querySelector('.prog-bar');
         const bg = document.getElementById('prog-bg');
-        btn.disabled = true; btn.innerText = "Processing...";
+        
+        btn.disabled = true; 
+        btn.innerText = "Converting...";
         bg.style.display = 'block';
+        bar.style.width = "30%";
 
-        try {
-            const ticketRes = await fetch(SCRIPT_URL, { method: "POST", body: new URLSearchParams({ videoName: file.name, videoMime: file.type, username: user }) });
-            const uploadUrl = await ticketRes.text();
-            const xhr = new XMLHttpRequest();
-            xhr.open("PUT", uploadUrl, true);
-            xhr.upload.onprogress = (e) => {
-                const percent = Math.round((e.loaded / e.total) * 100);
-                bar.style.width = percent + "%";
-                btn.innerText = `Uploading: ${percent}%`;
-            };
-            xhr.onload = () => { if (xhr.status >= 200 && xhr.status < 300) { location.reload(); } };
-            xhr.send(file);
-        } catch(err) { alert("Error."); btn.disabled = false; }
+        const reader = new FileReader();
+        reader.onload = function() {
+            bar.style.width = "60%";
+            btn.innerText = "Publishing...";
+            
+            const formData = new URLSearchParams({
+                videoData: reader.result.split(',')[1],
+                videoMime: file.type,
+                videoName: file.name,
+                username: user
+            });
+
+            fetch(SCRIPT_URL, { method: "POST", body: formData })
+            .then(res => res.text())
+            .then(data => {
+                bar.style.width = "100%";
+                btn.innerText = "Success!";
+                setTimeout(() => location.reload(), 1000);
+            })
+            .catch(err => {
+                alert("Upload failed.");
+                btn.disabled = false;
+                btn.innerText = "Publish";
+            });
+        };
+        reader.readAsDataURL(file);
     }
 
     function play(id, title, uploader, isZoro) {
