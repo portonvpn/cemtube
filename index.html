@@ -31,18 +31,10 @@
         .dots-btn { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; background: rgba(0,0,0,0.7); border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 10; cursor: pointer; border: 1px solid var(--border); }
         .dropdown { display: none; position: absolute; top: 45px; right: 0; background: #111; border: 1px solid var(--border); border-radius: 12px; width: 150px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .dropdown div { padding: 12px; font-size: 13px; cursor: pointer; color: #ccc; }
-        
-        #player-page { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 5000; overflow-y: auto; }
-        .player-layout { display: grid; grid-template-columns: 1fr 380px; gap: 24px; max-width: 1700px; margin: 0 auto; padding: 80px 20px 20px; }
+        #player-page { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 5000; overflow-y: auto; padding-top: 64px; }
+        .player-layout { display: grid; grid-template-columns: 1fr 380px; gap: 24px; max-width: 1700px; margin: 0 auto; padding: 20px; }
         .video-wrapper { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 20px; overflow: hidden; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
-        video { width: 100%; height: 100%; object-fit: contain; }
-        img.p-media { max-width: 100%; max-height: 100%; object-fit: contain; }
-        
-        .rec-card { display: flex; gap: 12px; cursor: pointer; margin-bottom: 12px; }
-        .rec-thumb { width: 140px; aspect-ratio: 16/9; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; flex-shrink: 0; }
-        .rec-info { overflow: hidden; }
-        .rec-title { font-size: 14px; font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        
+        video, img.p-media { width: 100%; height: 100%; object-fit: contain; }
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 8000; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
         .modal-box { background: var(--card); padding: 32px; border-radius: 24px; width: 90%; max-width: 480px; border: 1px solid var(--border); }
         .prog-bg { width: 100%; height: 6px; background: #111; border-radius: 10px; margin: 20px 0; display: none; overflow: hidden; }
@@ -51,7 +43,17 @@
         button.primary-btn { width: 100%; padding: 16px; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-weight: 800; cursor: pointer; }
         .v-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: black; cursor: pointer; }
         .badge { background: var(--primary); border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; color: white; margin-left: 4px; }
-        @media (max-width: 900px) { .hamburger { display: flex; } aside { transform: translateX(-100%); width: 280px; background: #050505; } aside.open { transform: translateX(0); } main { margin-left: 0; padding: 15px; } .grid { grid-template-columns: 1fr; } .player-layout { grid-template-columns: 1fr; padding-top: 20px; } .rec-thumb { width: 100px; } }
+        
+        #comments-container { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px; }
+        .comment-item { display: flex; gap: 12px; margin-bottom: 20px; position: relative; }
+        .comment-text { font-size: 14px; line-height: 1.4; color: var(--text); }
+        .comment-user { font-weight: 800; font-size: 13px; margin-bottom: 4px; cursor: pointer; }
+        .comment-user:hover { color: var(--primary); }
+        .rec-card { display: flex; gap: 12px; cursor: pointer; margin-bottom: 12px; }
+        .rec-thumb { width: 140px; aspect-ratio: 16/9; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; flex-shrink: 0; }
+        .rec-info { overflow: hidden; }
+
+        @media (max-width: 900px) { .hamburger { display: flex; } aside { transform: translateX(-100%); width: 280px; background: #050505; } aside.open { transform: translateX(0); } main { margin-left: 0; padding: 15px; } .grid { grid-template-columns: 1fr; } .player-layout { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body onclick="closeAllMenus(); closeSidebar();">
@@ -91,12 +93,12 @@
 <div id="player-page">
     <div class="player-layout">
         <div>
-            <div style="margin-bottom:15px; display:flex; justify-content:space-between;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <span onclick="closePlayer()" style="cursor:pointer; color:var(--text-dim); font-weight:800;">← EXIT</span>
-                <span id="next-btn-top" onclick="playNext()" style="cursor:pointer; color:var(--primary); font-weight:800;">UP NEXT →</span>
+                <span onclick="playNext()" style="cursor:pointer; color:var(--primary); font-weight:800;">UP NEXT →</span>
             </div>
             <div class="video-wrapper" id="p-target"></div>
-            <div style="margin-top:20px; padding:20px; background:var(--card); border-radius:15px; border:1px solid var(--border)">
+            <div style="margin-top:20px; padding:20px; background:rgba(255,255,255,0.02); border-radius:15px; border:1px solid var(--border)">
                 <h1 id="p-title" style="margin:0; font-size:22px;"></h1>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
                     <div style="display:flex; align-items:center; gap:10px;">
@@ -107,17 +109,25 @@
                     <button onclick="handleLike()" style="background:#111; color:white; border:1px solid var(--border); padding:8px 15px; border-radius:100px; cursor:pointer;">❤️ <span id="p-likes">0</span></button>
                 </div>
                 <p id="p-desc-content" style="color:var(--text-dim); margin-top:15px; font-size:14px;"></p>
+                <div id="comments-container">
+                    <h3 style="margin-top:0">Comments</h3>
+                    <div style="display:flex; gap:10px; margin-bottom:20px;">
+                        <input type="text" id="comm-input" placeholder="Add a comment..." style="margin-bottom:0">
+                        <button class="primary-btn" style="width:auto; padding:0 20px" onclick="postComment()">Post</button>
+                    </div>
+                    <div id="comments-list"></div>
+                </div>
             </div>
         </div>
         <div>
-            <h3 style="margin-top:0;">Up Next</h3>
+            <h3 style="margin-top:0">Up Next</h3>
             <div id="rec-grid"></div>
         </div>
     </div>
 </div>
 <div id="modal-upload" class="modal-overlay">
     <div class="modal-box" onclick="event.stopPropagation()">
-        <h3>Upload Media</h3>
+        <h3>Upload</h3>
         <input type="text" id="vid-name" placeholder="Title">
         <textarea id="vid-desc" placeholder="Description..." rows="3"></textarea>
         <input type="file" id="vid-input">
@@ -128,7 +138,7 @@
 </div>
 <div id="modal-edit" class="modal-overlay">
     <div class="modal-box" onclick="event.stopPropagation()">
-        <h3>Edit Details</h3>
+        <h3>Edit</h3>
         <input type="text" id="edit-title">
         <textarea id="edit-desc" rows="4"></textarea>
         <button class="primary-btn" onclick="saveEdit()">Save Changes</button>
@@ -166,7 +176,7 @@
     }
     function updateNav(){
         document.getElementById('u-name-display').innerText = currentUser;
-        const av = document.getElementById('nav-avatar'); av.style.background = getCol(currentUser); av.innerText = currentUser ? currentUser[0].toUpperCase() : '?';
+        const av = document.getElementById('nav-avatar'); av.style.background = getCol(currentUser); av.innerText = currentUser?currentUser[0].toUpperCase():'?';
     }
     function setContext(ctx, el){
         currentCtx=ctx; document.querySelectorAll('.side-item').forEach(i=>i.classList.remove('active'));
@@ -180,52 +190,72 @@
         else if(currentCtx==='home') d=d.filter(v=>v.url && !v.url.match(/\.(jpg|jpeg|png|webp|gif)$/i));
         else if(currentCtx==='studio') d=d.filter(v=>v.uploader===currentUser);
         grid.innerHTML = d.map(v=>{
-            const currProf = allProfiles.find(x=>x.username===currentUser);
-            const isOwner = currProf?.is_verified || v.uploader===currentUser;
+            const cP = allProfiles.find(x=>x.username===currentUser);
+            const isO = cP?.is_verified || v.uploader===currentUser;
             const p = allProfiles.find(x=>x.username===v.uploader);
             return `<div class="card">
                 <div class="dots-btn" onclick="event.stopPropagation(); toggleMenu(event,'${v.id}')">⋮</div>
                 <div id="menu-${v.id}" class="dropdown">
                     <div onclick="openProfile('${v.uploader}')">👤 Channel</div>
-                    ${isOwner ? `<div onclick="openEdit('${v.id}','${v.title}','${encodeURIComponent(v.details||'')}')">📝 Edit</div><div onclick="deleteVideo('${v.id}')" style="color:red">🗑️ Delete</div>` : ''}
+                    ${isO ? `<div onclick="openEdit('${v.id}','${v.title}','${encodeURIComponent(v.details||'')}')">📝 Edit</div><div onclick="deleteVideo('${v.id}')" style="color:red">🗑️ Delete</div>` : ''}
                 </div>
                 <div class="v-thumb-wrap" onclick="playVideo('${v.id}')"><img src="${v.thumb}" class="v-img-prev"></div>
                 <div style="display:flex; gap:12px; padding:12px 0;">
-                    <div class="v-avatar" style="background:${getCol(v.uploader)}" onclick="event.stopPropagation(); openProfile('${v.uploader}')">${v.uploader ? v.uploader[0] : '?'}</div>
+                    <div class="v-avatar" style="background:${getCol(v.uploader)}" onclick="event.stopPropagation(); openProfile('${v.uploader}')">${v.uploader?v.uploader[0]:'?'}</div>
                     <div><div style="font-weight:700;">${v.title}</div><div style="font-size:12px;color:gray;">${v.uploader} ${p?.is_verified?'<span class="badge">✓</span>':''}</div></div>
                 </div>
             </div>`;
         }).join('');
-    }
-    function openProfile(user){
-        currentCtx='profile'; document.querySelectorAll('.page-view').forEach(p=>p.classList.remove('active'));
-        document.getElementById('view-profile').classList.add('active');
-        const p = allProfiles.find(x=>x.username===user);
-        document.getElementById('profile-head').innerHTML = `<div class="v-avatar" style="width:80px; height:80px; font-size:30px; margin:0 auto; background:${getCol(user)}">${user ? user[0] : '?'}</div><h2 style="margin:10px 0 5px">${user} ${p?.is_verified?'<span class="badge" style="width:18px; height:18px;">✓</span>':''}</h2><p style="color:gray">${p?.subscribers||0} subscribers</p>`;
-        render('profile-grid', allVideos.filter(v=>v.uploader===user));
     }
     async function playVideo(id){
         activeVideo=allVideos.find(v=>v.id == id); document.getElementById('player-page').style.display='block';
         const p = allProfiles.find(x=>x.username===activeVideo.uploader);
         document.getElementById('p-title').innerText=activeVideo.title;
         document.getElementById('p-uploader').innerText=activeVideo.uploader;
+        document.getElementById('p-uploader').onclick=()=>openProfile(activeVideo.uploader);
         document.getElementById('p-avatar').style.background=getCol(activeVideo.uploader);
         document.getElementById('p-avatar').innerText=activeVideo.uploader[0];
+        document.getElementById('p-avatar').onclick=()=>openProfile(activeVideo.uploader);
         document.getElementById('p-subs').innerText=`${p?.subscribers||0} subscribers`;
         document.getElementById('p-likes').innerText=activeVideo.likes||0;
         document.getElementById('p-desc-content').innerText=activeVideo.details||"";
         const t=document.getElementById('p-target');
-        const isImg = activeVideo.url.match(/\.(jpg|jpeg|png|webp|gif)$/i);
-        t.innerHTML = isImg ? `<img src="${activeVideo.url}" class="p-media">` : `<video controls autoplay src="${activeVideo.url}"></video>`;
+        t.innerHTML = activeVideo.url.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? `<img src="${activeVideo.url}" class="p-media">` : `<video controls autoplay src="${activeVideo.url}"></video>`;
         await supabaseClient.from('videos').update({views:(activeVideo.views||0)+1}).eq('id',id);
-        renderRecs();
+        renderRecs(); loadComments();
     }
     function renderRecs(){
-        const recGrid = document.getElementById('rec-grid');
-        const list = allVideos.filter(v=>v.id != activeVideo.id).slice(0,10);
-        recGrid.innerHTML = list.map(v => `<div class="rec-card" onclick="playVideo('${v.id}')"><div class="rec-thumb"><img src="${v.thumb}" style="width:100%; height:100%; object-fit:cover;"></div><div class="rec-info"><div class="rec-title">${v.title}</div><div style="font-size:12px; color:gray; margin-top:4px;">${v.uploader}</div></div></div>`).join('');
+        const rG = document.getElementById('rec-grid');
+        const l = allVideos.filter(v=>v.id != activeVideo.id).slice(0,10);
+        rG.innerHTML = l.map(v => `<div class="rec-card" onclick="playVideo('${v.id}')"><div class="rec-thumb"><img src="${v.thumb}" style="width:100%;height:100%;object-fit:cover"></div><div class="rec-info"><div class="rec-title">${v.title}</div><div style="font-size:12px;color:gray;margin-top:4px">${v.uploader}</div></div></div>`).join('');
     }
-    function playNext(){ const next = allVideos.filter(v=>v.id != activeVideo.id)[0]; if(next) playVideo(next.id); }
+    function playNext(){ const n = allVideos.filter(v=>v.id != activeVideo.id)[0]; if(n) playVideo(n.id); }
+    async function postComment(){
+        const txt = document.getElementById('comm-input').value.trim(); if(!txt) return;
+        let existing = activeVideo.comments ? JSON.parse(activeVideo.comments) : [];
+        existing.push({ user: currentUser, text: txt, time: Date.now() });
+        const { error } = await supabaseClient.from('videos').update({ comments: JSON.stringify(existing) }).eq('id', activeVideo.id);
+        if(!error) { activeVideo.comments = JSON.stringify(existing); document.getElementById('comm-input').value = ''; loadComments(); }
+    }
+    function loadComments(){
+        const list = document.getElementById('comments-list');
+        const arr = activeVideo.comments ? JSON.parse(activeVideo.comments) : [];
+        const cP = allProfiles.find(x=>x.username===currentUser);
+        list.innerHTML = arr.reverse().map((c, i) => `
+            <div class="comment-item">
+                <div class="v-avatar" style="width:32px; height:32px; font-size:12px; background:${getCol(c.user)}" onclick="openProfile('${c.user}')">${c.user[0]}</div>
+                <div style="flex:1">
+                    <div class="comment-user" onclick="openProfile('${c.user}')">${c.user}</div>
+                    <div class="comment-text">${c.text}</div>
+                </div>
+                ${(cP?.is_verified || c.user === currentUser) ? `<div onclick="deleteComment(${i})" style="color:red; font-size:10px; cursor:pointer">Delete</div>` : ''}
+            </div>`).join('');
+    }
+    async function deleteComment(idx){
+        let arr = JSON.parse(activeVideo.comments); arr.reverse().splice(idx, 1); arr.reverse();
+        await supabaseClient.from('videos').update({ comments: JSON.stringify(arr) }).eq('id', activeVideo.id);
+        activeVideo.comments = JSON.stringify(arr); loadComments();
+    }
     async function handleLike(){
         const n=(activeVideo.likes||0)+1; await supabaseClient.from('videos').update({likes:n}).eq('id',activeVideo.id);
         document.getElementById('p-likes').innerText=n; activeVideo.likes=n;
@@ -250,6 +280,14 @@
             await supabaseClient.from('videos').insert([{title:document.getElementById('vid-name').value||v.name, uploader:currentUser, url:d.secure_url, thumb:t, views:0, likes:0, details:document.getElementById('vid-desc').value}]);
             bar.style.width="100%"; setTimeout(()=>location.reload(),800);
         } catch(e){alert("Fail"); btn.disabled=false;}
+    }
+    function openProfile(user){
+        currentCtx='profile'; document.querySelectorAll('.page-view').forEach(p=>p.classList.remove('active'));
+        document.getElementById('view-profile').classList.add('active');
+        const p = allProfiles.find(x=>x.username===user);
+        document.getElementById('profile-head').innerHTML = `<div class="v-avatar" style="width:80px;height:80px;font-size:30px;margin:0 auto;background:${getCol(user)}">${user?user[0]:'?'}</div><h2 style="margin:10px 0 5px">${user} ${p?.is_verified?'<span class="badge" style="width:18px;height:18px">✓</span>':''}</h2><p style="color:gray">${p?.subscribers||0} subscribers</p>`;
+        render('profile-grid', allVideos.filter(v=>v.uploader===user));
+        closePlayer();
     }
     function openEdit(id,t,d){editingId=id; document.getElementById('edit-title').value=t; document.getElementById('edit-desc').value=decodeURIComponent(d); document.getElementById('modal-edit').style.display='flex';}
     async function saveEdit(){await supabaseClient.from('videos').update({title:document.getElementById('edit-title').value, details:document.getElementById('edit-desc').value}).eq('id',editingId); location.reload();}
