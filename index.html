@@ -36,11 +36,14 @@
     </div>
 </div>
 <nav id="nav-bar">
-    <div style="display:flex; align-items:center; gap:15px;">
+    <div style="display:flex; align-items:center; gap:15px; flex-shrink:0;">
         <div class="hamburger" onclick="toggleSidebar()"><div></div><div></div><div></div></div>
         <a href="#" class="logo" onclick="setContext('home')">CEM<span>ABYSS</span></a>
     </div>
-    <div style="display:flex; align-items:center; gap:15px;">
+    <div style="flex:1; display:flex; justify-content:center; padding: 0 15px;">
+        <input type="text" id="global-search" placeholder="Search videos..." oninput="handleSearch()" style="width:100%; max-width:400px; margin-bottom:0; height:40px; background:rgba(0,0,0,0.5); border-radius:100px; padding:0 20px;">
+    </div>
+    <div style="display:flex; align-items:center; gap:15px; flex-shrink:0;">
         <div id="u-coins" class="coin-chip">🪙 0</div>
         <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="setContext('settings')">
             <div id="u-name-display" style="font-weight:800; font-size:14px;"></div>
@@ -229,7 +232,7 @@
                         <div><div id="p-uploader" style="font-weight:800; cursor:pointer; display:flex; align-items:center;"></div><div id="p-subs" style="font-size:12px; color:gray;"></div></div>
                         <button id="sub-btn" class="primary-btn" style="width:auto; padding:8px 15px; font-size:12px;" onclick="toggleSub()">SUBSCRIBE</button>
                     </div>
-                    <button onclick="handleLike()" style="background:#111; color:white; border:1px solid var(--border); padding:8px 15px; border-radius:100px; cursor:pointer;">❤️ <span id="p-likes">0</span></button>
+                    <button id="like-btn" onclick="handleLike()" style="background:#111; color:white; border:1px solid var(--border); padding:8px 15px; border-radius:100px; cursor:pointer;">❤️ <span id="p-likes">0</span></button>
                 </div>
                 <p id="p-desc-content" style="color:var(--text-dim); margin-top:15px; font-size:14px;"></p>
                 <div id="comments-container">

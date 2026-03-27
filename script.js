@@ -188,6 +188,35 @@ function render(target = 'v-grid', list = null) {
     }).join('');
 }
 
+function handleSearch() {
+    const q = document.getElementById('global-search').value.trim().toLowerCase();
+    
+    if (!q) {
+        if (currentCtx === 'home') render('v-grid', null);
+        return;
+    }
+    
+    if (currentCtx !== 'home') {
+        document.querySelectorAll('.side-item').forEach(i => i.classList.remove('active'));
+        document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+        document.getElementById('view-home').classList.add('active');
+        currentCtx = 'home';
+    }
+
+    // Fuzzy matching: "mri" matches "mario"
+    const fuzzyRegex = new RegExp(q.split('').join('.*?'), 'i');
+    
+    const results = allVideos.filter(v => {
+        if (!(DEV_USERS.includes(currentUser) || v.uploader === currentUser)) {
+            const p = allProfiles.find(x => x.username === v.uploader);
+            if (p && p.is_shadowbanned) return false;
+        }
+        return fuzzyRegex.test(v.title) || fuzzyRegex.test(v.uploader);
+    });
+    
+    render('v-grid', results);
+}
+
 function updateRankCSS() {
     let css = `@keyframes rankBGMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } \n`;
     allRanks.forEach(rank => {
@@ -453,9 +482,30 @@ async function deleteRank() {
     fetchData();
 }
 
-async function toggleVerify(u, s) { await supabaseClient.from('profiles').update({ is_verified: s }).eq('username', u); fetchData(); }
-async function toggleBan(u, s) { await supabaseClient.from('profiles').update({ is_banned: s }).eq('username', u); fetchData(); }
-async function deleteAccount(u) { if (confirm("Nuke this user and ALL their videos?")) { await supabaseClient.from('videos').delete().eq('uploader', u); await supabaseClient.from('profiles').delete().eq('username', u); fetchData(); } }
+async function toggleVerify(u, s) { 
+    const p = allProfiles.find(x => x.username === u); if(p) p.is_verified = s;
+    searchAdminUser();
+    await supabaseClient.from('profiles').update({ is_verified: s }).eq('username', u); 
+    fetchData(); 
+}
+
+async function toggleBan(u, s) { 
+    const p = allProfiles.find(x => x.username === u); if(p) p.is_banned = s;
+    searchAdminUser();
+    await supabaseClient.from('profiles').update({ is_banned: s }).eq('username', u); 
+    fetchData(); 
+}
+
+async function deleteAccount(u) { 
+    if (confirm("Nuke this user and ALL their videos?")) { 
+        allProfiles = allProfiles.filter(x => x.username !== u);
+        const searchRes = document.getElementById('admin-search-result');
+        if(searchRes) searchRes.innerHTML = '<p style="color:var(--primary)">User completely erased.</p>';
+        await supabaseClient.from('videos').delete().eq('uploader', u); 
+        await supabaseClient.from('profiles').delete().eq('username', u); 
+        fetchData(); 
+    } 
+}
 
 async function playVideo(id) {
     activeVideo = allVideos.find(v => v.id == id); document.getElementById('player-page').style.display = 'block';
@@ -467,7 +517,35 @@ async function playVideo(id) {
     document.getElementById('p-avatar').innerText = activeVideo.uploader[0];
     document.getElementById('p-avatar').onclick = () => openProfile(activeVideo.uploader);
     document.getElementById('p-subs').innerText = `${p?.subscribers || 0} subscribers`;
-    document.getElementById('p-likes').innerText = activeVideo.likes || 0;
+
+    let localLikes = JSON.parse(localStorage.getItem(`cem_likes_${currentUser}`) || '[]');
+    let localSubs = JSON.parse(localStorage.getItem(`cem_subs_${currentUser}`) || '[]');
+    
+    const likeBtn = document.getElementById('like-btn');
+    if (likeBtn) {
+        if (localLikes.includes(activeVideo.id)) {
+            likeBtn.style.background = 'var(--primary)';
+            likeBtn.innerHTML = `👍 Liked (<span id="p-likes">${activeVideo.likes || 0}</span>)`;
+        } else {
+            likeBtn.style.background = 'rgba(255,255,255,0.1)';
+            likeBtn.innerHTML = `👍 <span id="p-likes">${activeVideo.likes || 0}</span>`;
+        }
+    } else {
+        const pLikes = document.getElementById('p-likes');
+        if (pLikes) pLikes.innerText = activeVideo.likes || 0;
+    }
+    
+    const subBtn = document.getElementById('sub-btn');
+    if (subBtn) {
+        if (localSubs.includes(activeVideo.uploader)) {
+            subBtn.classList.add('active');
+            subBtn.innerText = 'SUBSCRIBED';
+        } else {
+            subBtn.classList.remove('active');
+            subBtn.innerText = 'SUBSCRIBE';
+        }
+    }
+
     document.getElementById('p-desc-content').innerText = activeVideo.details || "";
     const t = document.getElementById('p-target');
     t.innerHTML = activeVideo.url.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? `<img src="${activeVideo.url}" class="p-media">` : `<video controls autoplay src="${activeVideo.url}"></video>`;
@@ -477,11 +555,24 @@ async function playVideo(id) {
 
 function renderRecs() {
     const rG = document.getElementById('rec-grid');
-    const l = allVideos.filter(v => v.id != activeVideo.id).slice(0, 10);
+    const validRecs = allVideos.filter(v => v.id != activeVideo.id).filter(v => {
+        if (DEV_USERS.includes(currentUser) || v.uploader === currentUser) return true;
+        const p = allProfiles.find(x => x.username === v.uploader);
+        return !(p && p.is_shadowbanned);
+    });
+    const l = validRecs.slice(0, 10);
     rG.innerHTML = l.map(v => `<div class="rec-card" onclick="playVideo('${v.id}')"><div class="rec-thumb"><img src="${v.thumb}" style="width:100%;height:100%;object-fit:cover"></div><div class="rec-info"><div class="rec-title">${v.title}</div><div style="font-size:12px;color:gray;margin-top:4px;display:flex;align-items:center;">${formatName(v.uploader)}</div></div></div>`).join('');
 }
 
-function playNext() { const n = allVideos.filter(v => v.id != activeVideo.id)[0]; if (n) playVideo(n.id); }
+function playNext() { 
+    const validRecs = allVideos.filter(v => v.id != activeVideo.id).filter(v => {
+        if (DEV_USERS.includes(currentUser) || v.uploader === currentUser) return true;
+        const p = allProfiles.find(x => x.username === v.uploader);
+        return !(p && p.is_shadowbanned);
+    });
+    const n = validRecs[0]; 
+    if (n) playVideo(n.id); 
+}
 
 async function postComment() {
     const txt = document.getElementById('comm-input').value.trim(); if (!txt) return;
@@ -493,42 +584,97 @@ async function postComment() {
 
 function loadComments() {
     const list = document.getElementById('comments-list');
-    const arr = activeVideo.comments ? JSON.parse(activeVideo.comments) : [];
-    list.innerHTML = arr.reverse().map((c, i) => `
+    let arr = activeVideo.comments ? JSON.parse(activeVideo.comments) : [];
+    
+    arr = arr.map((c, idx) => ({ ...c, originalIdx: idx })).reverse();
+    
+    const filteredComments = arr.filter(c => {
+        if (DEV_USERS.includes(currentUser) || c.user === currentUser) return true;
+        const p = allProfiles.find(x => x.username === c.user);
+        return !(p && p.is_shadowbanned);
+    });
+
+    list.innerHTML = filteredComments.map(c => `
         <div class="comment-item">
             <div class="v-avatar" style="width:32px; height:32px; font-size:12px; ${getAvatarStyle(c.user)}" onclick="openProfile('${c.user}')">${c.user[0]}</div>
             <div style="flex:1">
                 <div class="comment-user" onclick="openProfile('${c.user}')">${formatName(c.user)}</div>
                 <div class="comment-text">${c.text}</div>
             </div>
-            ${(DEV_USERS.includes(currentUser) || c.user === currentUser) ? `<div onclick="deleteComment(${i})" style="color:red; font-size:10px; cursor:pointer">Delete</div>` : ''}
+            ${(DEV_USERS.includes(currentUser) || c.user === currentUser) ? `<div onclick="deleteComment(${c.originalIdx})" style="color:red; font-size:10px; cursor:pointer">Delete</div>` : ''}
         </div>`).join('');
 }
 
 async function deleteComment(idx) {
-    let arr = JSON.parse(activeVideo.comments); arr.reverse().splice(idx, 1); arr.reverse();
+    let arr = JSON.parse(activeVideo.comments); 
+    arr.splice(idx, 1); 
     await supabaseClient.from('videos').update({ comments: JSON.stringify(arr) }).eq('id', activeVideo.id);
     activeVideo.comments = JSON.stringify(arr); loadComments();
 }
 
+let isLiking = false;
 async function handleLike() {
-    const n = (activeVideo.likes || 0) + 1; await supabaseClient.from('videos').update({ likes: n }).eq('id', activeVideo.id);
-    document.getElementById('p-likes').innerText = n; activeVideo.likes = n;
+    let localLikes = JSON.parse(localStorage.getItem(`cem_likes_${currentUser}`) || '[]');
+    if (isLiking || localLikes.includes(activeVideo.id)) return;
+    isLiking = true;
+    
+    const n = (activeVideo.likes || 0) + 1; 
+    
+    localLikes.push(activeVideo.id);
+    localStorage.setItem(`cem_likes_${currentUser}`, JSON.stringify(localLikes));
+    
+    activeVideo.likes = n;
+    const b = document.getElementById('like-btn'); 
+    if (b) {
+        b.style.background = 'var(--primary)';
+        b.innerHTML = `👍 Liked (<span id="p-likes">${n}</span>)`;
+    }
+
+    await supabaseClient.from('videos').update({ likes: n }).eq('id', activeVideo.id);
+    isLiking = false;
 }
 
+let isSubbing = false;
 async function toggleSub() {
-    const b = document.getElementById('sub-btn'); b.classList.toggle('active');
-    const isS = b.classList.contains('active'); b.innerText = isS ? 'SUBSCRIBED' : 'SUBSCRIBE';
+    if (isSubbing) return;
+    isSubbing = true;
+
+    const b = document.getElementById('sub-btn'); 
+    let localSubs = JSON.parse(localStorage.getItem(`cem_subs_${currentUser}`) || '[]');
+    const isCurrentlySubbed = localSubs.includes(activeVideo.uploader);
+    const isNowSubbed = !isCurrentlySubbed;
+
     const p = allProfiles.find(x => x.username === activeVideo.uploader);
-    const n = isS ? (p.subscribers + 1) : Math.max(0, p.subscribers - 1);
+    let n = p.subscribers || 0;
+    
+    if (isNowSubbed) {
+        n += 1;
+        b.classList.add('active');
+        b.innerText = 'SUBSCRIBED';
+        localSubs.push(activeVideo.uploader);
+    } else {
+        n = Math.max(0, n - 1);
+        b.classList.remove('active');
+        b.innerText = 'SUBSCRIBE';
+        localSubs = localSubs.filter(x => x !== activeVideo.uploader);
+    }
+    
+    localStorage.setItem(`cem_subs_${currentUser}`, JSON.stringify(localSubs));
+    document.getElementById('p-subs').innerText = `${n} subscribers`; 
+    p.subscribers = n;
+
     await supabaseClient.from('profiles').update({ subscribers: n }).eq('username', activeVideo.uploader);
-    document.getElementById('p-subs').innerText = `${n} subscribers`; p.subscribers = n;
+    isSubbing = false;
 }
 
 async function handleUpload() {
     const v = document.getElementById('vid-input').files[0];
     const tFile = document.getElementById('vid-thumb').files[0];
-    if (!v) return;
+    if (!v) return alert("Please select a file to upload!");
+    
+    // Cloudinary usually limits unsigned uploads to ~10MB for free tiers
+    if (v.size > 100 * 1024 * 1024) return alert("File is too large! Please keep it under 100MB depending on your Cloudinary limits.");
+    
     const btn = document.getElementById('publish-btn'), bar = document.getElementById('prog-bar'), bg = document.getElementById('prog-bg');
     btn.disabled = true; bg.style.display = 'block'; bar.style.width = "10%";
 
@@ -538,19 +684,40 @@ async function handleUpload() {
             const fdT = new FormData(); fdT.append('file', tFile); fdT.append('upload_preset', UPLOAD_PRESET);
             const rT = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: fdT });
             const dT = await rT.json();
+            if (dT.error) throw new Error("Thumb Upload Error: " + dT.error.message);
             thumbUrl = dT.secure_url;
         }
         bar.style.width = "30%";
 
         const fd = new FormData(); fd.append('file', v); fd.append('upload_preset', UPLOAD_PRESET);
         const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: fd });
-        const d = await r.json(); bar.style.width = "70%";
+        const d = await r.json(); 
+        
+        if (d.error) throw new Error("Video Upload Error: " + d.error.message);
+        bar.style.width = "70%";
 
         if (!thumbUrl) thumbUrl = d.resource_type === 'video' ? d.secure_url.replace(/\.[^/.]+$/, ".jpg") : d.secure_url;
 
-        await supabaseClient.from('videos').insert([{ title: document.getElementById('vid-name').value || v.name, uploader: currentUser, url: d.secure_url, thumb: thumbUrl, views: 0, likes: 0, details: document.getElementById('vid-desc').value }]);
-        bar.style.width = "100%"; setTimeout(() => location.reload(), 800);
-    } catch (e) { alert("Fail"); btn.disabled = false; }
+        const { error: dbError } = await supabaseClient.from('videos').insert([{ 
+            title: document.getElementById('vid-name').value || v.name, 
+            uploader: currentUser, 
+            url: d.secure_url, 
+            thumb: thumbUrl, 
+            views: 0, 
+            likes: 0, 
+            details: document.getElementById('vid-desc').value 
+        }]);
+
+        if (dbError) throw new Error("Supabase Database Error: " + dbError.message);
+
+        bar.style.width = "100%"; 
+        setTimeout(() => location.reload(), 800);
+    } catch (e) { 
+        console.error(e);
+        alert("Upload Failed -> " + e.message); 
+        btn.disabled = false; 
+        bar.style.width = "0%";
+    }
 }
 
 function openProfile(user) {
@@ -653,9 +820,21 @@ async function toggleShadowban(u) {
     const p = allProfiles.find(x => x.username === u);
     if (!p) return;
     const s = !p.is_shadowbanned;
-    await supabaseClient.from('profiles').update({ is_shadowbanned: s }).eq('username', u);
+    
+    p.is_shadowbanned = s; // update locally instantly
+    searchAdminUser();
+    
+    const { error } = await supabaseClient.from('profiles').update({ is_shadowbanned: s }).eq('username', u);
+    
+    if (error) {
+        p.is_shadowbanned = !s; // revert on fail
+        searchAdminUser();
+        alert("SQL Error: Missing 'is_shadowbanned' bool column in 'profiles' table. It failed to update!");
+        return;
+    }
+    
     logAudit(s ? 'SHADOWBAN' : 'UN-SHADOWBAN', u, `Shadowban status changed`);
-    fetchData(); setTimeout(searchAdminUser, 500);
+    fetchData();
 }
 
 function checkDailyCoins() {
