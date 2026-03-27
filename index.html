@@ -64,7 +64,10 @@
     <div class="side-item" style="color:var(--primary); margin-top:10px;" onclick="openUpload()">📤 Upload</div>
 </aside>
 <main id="main-area" style="display:none;">
-    <div id="view-home" class="page-view active"><div class="grid" id="v-grid"></div></div>
+    <div id="view-home" class="page-view active">
+        <div id="pinned-container"></div>
+        <div class="grid" id="v-grid"></div>
+    </div>
     <div id="view-announcements" class="page-view">
         <h2 style="margin-top:0; color:var(--primary);">System Announcements</h2>
         <div id="announcement-grid" style="display:flex; flex-direction:column; gap:20px; max-width:800px;"></div>

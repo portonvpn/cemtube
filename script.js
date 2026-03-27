@@ -175,6 +175,36 @@ function render(target = 'v-grid', list = null) {
 
     const cP = allProfiles.find(x => x.username === currentUser);
 
+    if (currentCtx === 'home' && target === 'v-grid') {
+        const pinSet = allSettings.find(x => x.id === 'pinned_video');
+        const pCont = document.getElementById('pinned-container');
+        if (pinSet && pinSet.data && pinSet.data.videoId) {
+            const pVid = allVideos.find(v => v.id === pinSet.data.videoId);
+            if (pVid) {
+                pCont.innerHTML = `
+                    <div style="margin-bottom: 24px; border-radius: 12px; border: 2px solid var(--primary); box-shadow: 0 0 30px rgba(168, 85, 247, 0.3); overflow: hidden; background: #0a0a0a; position: relative; cursor: pointer; display: flex; flex-wrap: wrap;" onclick="playVideo('${pVid.id}')">
+                        <div style="position:absolute; top:15px; left:15px; background:var(--primary); color:white; padding:6px 16px; border-radius:100px; font-weight:900; font-size:12px; box-shadow:0 0 15px var(--primary); z-index:10; letter-spacing:1px;">📌 FEATURED</div>
+                        ${DEV_USERS.includes(currentUser) ? `<div style="position:absolute; top:15px; right:15px; background:#e11d48; color:white; padding:6px 16px; border-radius:100px; font-weight:900; font-size:12px; z-index:10; cursor:pointer;" onclick="event.stopPropagation(); unpinVideo()">Unpin</div>` : ''}
+                        
+                        <div style="flex: 1 1 50%; min-width: 250px;">
+                            <img src="${pVid.thumb}" style="width: 100%; height: 100%; object-fit: cover; aspect-ratio: 16/9;">
+                        </div>
+                        <div style="flex: 1 1 50%; padding: 25px; display: flex; flex-direction: column; justify-content: center; min-width: 250px;">
+                            <h1 style="margin-top:0; font-size:24px; text-shadow:0 0 15px var(--primary);">${pVid.title}</h1>
+                            <div style="display:flex; align-items:center; gap:12px; margin-bottom: 15px;">
+                                <div class="v-avatar" style="${getAvatarStyle(pVid.uploader)}">${pVid.uploader[0]}</div>
+                                <div style="font-size:16px;">${formatName(pVid.uploader)}</div>
+                            </div>
+                            <p style="color:var(--text-dim); font-size:13px; line-height:1.5; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;">${pVid.details || 'No description provided.'}</p>
+                        </div>
+                    </div>
+                `;
+            } else { if(pCont) pCont.innerHTML = ''; }
+        } else {
+            if(pCont) pCont.innerHTML = '';
+        }
+    }
+
     grid.innerHTML = d.map(v => {
         const isOwner = v.uploader === currentUser;
         const canEdit = DEV_USERS.includes(currentUser) || (isOwner && cP?.is_verified);
@@ -184,6 +214,7 @@ function render(target = 'v-grid', list = null) {
             <div id="menu-${v.id}" class="dropdown">
                 <div onclick="openProfile('${v.uploader}')">👤 Channel</div>
                 ${canEdit ? `<div onclick="openEdit('${v.id}','${v.title}','${encodeURIComponent(v.details || '')}')">📝 Edit</div><div onclick="deleteVideo('${v.id}')" style="color:red">🗑️ Delete</div>` : ''}
+                ${DEV_USERS.includes(currentUser) ? `<div onclick="pinVideo('${v.id}')" style="color:#0ea5e9">📌 Pin Video</div>` : ''}
             </div>
             <div class="v-thumb-wrap" onclick="playVideo('${v.id}')"><img src="${v.thumb}" class="v-img-prev"></div>
             <div style="display:flex; gap:12px; padding:12px 0;">
@@ -276,6 +307,9 @@ function searchAdminUser() {
             </div>
             
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+                <div style="width:100%;">
+                    <p style="font-size:12px; color:gray; margin-top:0; margin-bottom:10px;"><b>Verification:</b> Normal users cannot natively edit or delete their own videos unless they are Verified using the button below. Admins completely bypass this check.</p>
+                </div>
                 <button class="primary-btn" style="width:auto; padding:8px 16px; background:#222;" onclick="toggleVerify('${p.username}', ${!p.is_verified})">${p.is_verified ? 'Unverify' : 'Verify'}</button>
                 <button class="primary-btn" style="width:auto; padding:8px 16px; background:#222;" onclick="toggleBan('${p.username}', ${!p.is_banned})">${p.is_banned ? 'Unban' : 'Ban'}</button>
                 <button class="primary-btn" style="width:auto; padding:8px 16px; background:#222; color:#f59e0b;" onclick="toggleShadowban('${p.username}')">${p.is_shadowbanned ? 'Un-Shadowban' : 'Shadowban'}</button>
@@ -770,6 +804,20 @@ function openUpload() { document.getElementById('modal-upload').style.display = 
 function closeUpload() { document.getElementById('modal-upload').style.display = 'none'; }
 function closeEdit() { document.getElementById('modal-edit').style.display = 'none'; }
 function closePlayer() { document.getElementById('player-page').style.display = 'none'; document.getElementById('p-target').innerHTML = ""; }
+
+async function pinVideo(id) {
+    if(!confirm("Pin this video to the top of the Home page globally?")) return;
+    await supabaseClient.from('site_settings').upsert([{ id: 'pinned_video', data: { videoId: id } }]);
+    logAudit('PINNED_VIDEO', id, `Pinned video to front page`);
+    alert("Video Pinned globally!");
+    fetchData();
+}
+
+async function unpinVideo() {
+    await supabaseClient.from('site_settings').upsert([{ id: 'pinned_video', data: { videoId: null } }]);
+    logAudit('UNPINNED_VIDEO', 'Global', `Unpinned featured video`);
+    fetchData();
+}
 
 async function saveName() {
     const n = document.getElementById('set-name').value.trim(); if (!n) return;
