@@ -179,7 +179,7 @@ function render(target = 'v-grid', list = null) {
         const pinSet = allSettings.find(x => x.id === 'pinned_video');
         const pCont = document.getElementById('pinned-container');
         if (pinSet && pinSet.data && pinSet.data.videoId) {
-            const pVid = allVideos.find(v => v.id === pinSet.data.videoId);
+            const pVid = allVideos.find(v => v.id == pinSet.data.videoId);
             if (pVid) {
                 pCont.innerHTML = `
                     <div style="margin-bottom: 24px; border-radius: 12px; border: 2px solid var(--primary); box-shadow: 0 0 30px rgba(168, 85, 247, 0.3); overflow: hidden; background: #0a0a0a; position: relative; cursor: pointer; display: flex; flex-wrap: wrap;" onclick="playVideo('${pVid.id}')">
@@ -807,15 +807,19 @@ function closePlayer() { document.getElementById('player-page').style.display = 
 
 async function pinVideo(id) {
     if(!confirm("Pin this video to the top of the Home page globally?")) return;
-    await supabaseClient.from('site_settings').upsert([{ id: 'pinned_video', data: { videoId: id } }]);
+    const { error } = await supabaseClient.from('site_settings').upsert([{ id: 'pinned_video', data: { videoId: id } }]);
+    
+    if (error) {
+        alert("SQL Error: " + error.message + " - Ensure site_settings table allows INSERT/UPDATE (RLS policies)!");
+        return;
+    }
+    
     logAudit('PINNED_VIDEO', id, `Pinned video to front page`);
-    alert("Video Pinned globally!");
     fetchData();
 }
 
 async function unpinVideo() {
-    await supabaseClient.from('site_settings').upsert([{ id: 'pinned_video', data: { videoId: null } }]);
-    logAudit('UNPINNED_VIDEO', 'Global', `Unpinned featured video`);
+    const { error } = await supabaseClient.from('site_settings').upsert([{ id: 'pinned_video', data: { videoId: null } }]);
     fetchData();
 }
 
