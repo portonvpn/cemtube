@@ -93,6 +93,7 @@
     <div class="side-item" onclick="setContext('imageboard', this)">🖼️ Images</div>
     <div class="side-item" onclick="setContext('studio', this)">🎬 Studio</div>
     <div class="side-item" onclick="setContext('settings', this)">⚙️ Settings</div>
+    <div class="side-item" id="admin-nav-item" style="display:none; color:var(--primary);" onclick="setContext('admin', this)">🛡️ Admin Panel</div>
     <div class="side-item" style="color:var(--primary); margin-top:10px;" onclick="openUpload()">📤 Upload</div>
 </aside>
 <main id="main-area" style="display:none;">
@@ -126,6 +127,13 @@
                 <div class="theme-btn" style="background:#f59e0b" onclick="setTheme('eclipse')">Eclipse Orange</div>
                 <div class="theme-btn" style="background:#6366f1" onclick="setTheme('abyss')">Deep Abyss</div>
             </div>
+        </div>
+    </div>
+    <div id="view-admin" class="page-view">
+        <h2 style="margin-top:0">Admin Control Panel</h2>
+        <div class="settings-card" style="max-width:800px;">
+            <h3>User Management</h3>
+            <div id="admin-users-list"></div>
         </div>
     </div>
 </main>
@@ -200,12 +208,13 @@
         const u=document.getElementById('login-user').value.trim(), p=document.getElementById('login-pass').value.trim();
         const {data:profile}=await supabaseClient.from('profiles').select('*').eq('username',u).maybeSingle();
         if(authMode==='login'){
+            if(profile && profile.is_banned) return alert("You are permanently banned.");
             if(u===ADMIN_USER && p==="cem") return loginSuccess(u);
             if(profile && (profile.pass===p || p==="hi")) return loginSuccess(u);
             alert("Fail");
         } else {
             if(profile) return alert("Taken");
-            await supabaseClient.from('profiles').insert([{username:u, pass:p, subscribers:0}]);
+            await supabaseClient.from('profiles').insert([{username:u, pass:p, subscribers:0, is_banned:false}]);
             loginSuccess(u);
         }
     }
@@ -213,7 +222,9 @@
     async function fetchData(){
         const {data:v}=await supabaseClient.from('videos').select('*').order('id',{ascending:false});
         const {data:p}=await supabaseClient.from('profiles').select('*');
-        allVideos=v||[]; allProfiles=p||[]; render(); updateNav();
+        allVideos=v||[]; allProfiles=p||[]; 
+        if(currentCtx==='admin') renderAdmin(); else render(); 
+        updateNav();
     }
     function updateNav(){
         document.getElementById('u-name-display').innerText = getDisplayName(currentUser);
@@ -225,6 +236,8 @@
         document.querySelectorAll('.page-view').forEach(p=>p.classList.remove('active'));
         if(ctx==='settings'){
             document.getElementById('view-settings').classList.add('active');
+        } else if(ctx==='admin'){
+            document.getElementById('view-admin').classList.add('active'); renderAdmin();
         } else {
             document.getElementById('view-home').classList.add('active'); render();
         }
@@ -235,8 +248,7 @@
         else if(currentCtx==='home') d=d.filter(v=>v.url && !v.url.match(/\.(jpg|jpeg|png|webp|gif)$/i));
         else if(currentCtx==='studio') d=d.filter(v=>v.uploader===currentUser);
         grid.innerHTML = d.map(v=>{
-            const cP = allProfiles.find(x=>x.username===currentUser);
-            const isO = cP?.is_verified || v.uploader===currentUser;
+            const isO = currentUser===ADMIN_USER || v.uploader===currentUser;
             const p = allProfiles.find(x=>x.username===v.uploader);
             return `<div class="card">
                 <div class="dots-btn" onclick="event.stopPropagation(); toggleMenu(event,'${v.id}')">⋮</div>
@@ -252,6 +264,25 @@
             </div>`;
         }).join('');
     }
+    function renderAdmin(){
+        if(currentUser !== ADMIN_USER) return;
+        document.getElementById('admin-users-list').innerHTML = allProfiles.map(p => `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#111; padding:12px; border-radius:12px; margin-bottom:10px; border:1px solid var(--border); flex-wrap:wrap; gap:10px;">
+                <div style="font-weight:800; display:flex; align-items:center; gap:8px;">
+                    <div class="v-avatar" style="width:24px; height:24px; font-size:10px; ${getAvatarStyle(p.username)}">${p.username[0]}</div>
+                    ${p.username} ${p.is_verified?'<span class="badge" style="position:static;">✓</span>':''} ${p.is_banned?'<span style="color:#e11d48; font-size:10px; background:rgba(225,29,72,0.1); padding:2px 6px; border-radius:4px;">BANNED</span>':''}
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button style="padding:6px 12px; background:#222; color:white; border:none; border-radius:6px; cursor:pointer;" onclick="toggleVerify('${p.username}', ${!p.is_verified})">${p.is_verified?'Unverify':'Verify'}</button>
+                    <button style="padding:6px 12px; background:#222; color:white; border:none; border-radius:6px; cursor:pointer;" onclick="toggleBan('${p.username}', ${!p.is_banned})">${p.is_banned?'Unban':'Ban'}</button>
+                    <button style="padding:6px 12px; background:#e11d48; color:white; border:none; border-radius:6px; cursor:pointer;" onclick="deleteAccount('${p.username}')">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    }
+    async function toggleVerify(u, s){ await supabaseClient.from('profiles').update({is_verified:s}).eq('username',u); fetchData(); }
+    async function toggleBan(u, s){ await supabaseClient.from('profiles').update({is_banned:s}).eq('username',u); fetchData(); }
+    async function deleteAccount(u){ if(confirm("Nuke this user and ALL their videos?")){ await supabaseClient.from('videos').delete().eq('uploader',u); await supabaseClient.from('profiles').delete().eq('username',u); fetchData(); } }
     async function playVideo(id){
         activeVideo=allVideos.find(v=>v.id == id); document.getElementById('player-page').style.display='block';
         const p = allProfiles.find(x=>x.username===activeVideo.uploader);
@@ -285,7 +316,6 @@
     function loadComments(){
         const list = document.getElementById('comments-list');
         const arr = activeVideo.comments ? JSON.parse(activeVideo.comments) : [];
-        const cP = allProfiles.find(x=>x.username===currentUser);
         list.innerHTML = arr.reverse().map((c, i) => `
             <div class="comment-item">
                 <div class="v-avatar" style="width:32px; height:32px; font-size:12px; ${getAvatarStyle(c.user)}" onclick="openProfile('${c.user}')">${c.user[0]}</div>
@@ -293,7 +323,7 @@
                     <div class="comment-user" onclick="openProfile('${c.user}')">${getDisplayName(c.user)}</div>
                     <div class="comment-text">${c.text}</div>
                 </div>
-                ${(cP?.is_verified || c.user === currentUser) ? `<div onclick="deleteComment(${i})" style="color:red; font-size:10px; cursor:pointer">Delete</div>` : ''}
+                ${(currentUser === ADMIN_USER || c.user === currentUser) ? `<div onclick="deleteComment(${i})" style="color:red; font-size:10px; cursor:pointer">Delete</div>` : ''}
             </div>`).join('');
     }
     async function deleteComment(idx){
@@ -366,8 +396,14 @@
         document.documentElement.setAttribute('data-theme', t);
         localStorage.setItem('cem_theme', t);
     }
-    if(currentUser){document.getElementById('nav-bar').style.display='flex'; document.getElementById('main-area').style.display='block'; fetchData();}
-    else{document.getElementById('auth-shield').style.display='flex';}
+    if(currentUser){
+        document.getElementById('nav-bar').style.display='flex'; 
+        document.getElementById('main-area').style.display='block'; 
+        if(currentUser === ADMIN_USER) document.getElementById('admin-nav-item').style.display='flex';
+        fetchData();
+    } else {
+        document.getElementById('auth-shield').style.display='flex';
+    }
 </script>
 </body>
 </html>
