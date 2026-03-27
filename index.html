@@ -52,6 +52,7 @@
         <button onclick="logout()" style="background:transparent; border:none; color:var(--text-dim); font-size:12px; font-weight:800; cursor:pointer;">Logout</button>
     </div>
 </nav>
+<div id="side-overlay" onclick="closeSidebar()" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1800; backdrop-filter:blur(3px);"></div>
 <aside id="side-bar">
     <div class="side-item active" onclick="setContext('home', this)">🏠 Home</div>
     <div class="side-item" onclick="setContext('studio', this)">🎬 Studio</div>

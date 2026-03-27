@@ -74,4 +74,37 @@ button.primary-btn { width: 100%; padding: 16px; background: var(--primary); col
 .theme-item:hover { transform:translateY(-5px); border-color:var(--primary); }
 .audit-log { font-family:monospace; background:#050505; color:#0f0; padding:15px; border-radius:12px; height:300px; overflow-y:auto; font-size:12px; margin-bottom:20px; border:1px solid #333; }
 
-@media (max-width: 900px) { .hamburger { display: flex; } aside { transform: translateX(-100%); width: 280px; background: #050505; } aside.open { transform: translateX(0); } main { margin-left: 0; padding: 15px; } .grid { grid-template-columns: 1fr; } .player-layout { grid-template-columns: 1fr; } }
+/* Mobile Optimizations */
+@media (max-width: 900px) { 
+    .hamburger { display: flex; } 
+    aside { transform: translateX(-100%); width: 280px; background: var(--bg); border: none; border-right: 1px solid var(--border); box-shadow: 10px 0 50px rgba(0,0,0,0.8); } 
+    aside.open { transform: translateX(0); } 
+    main { margin-left: 0; padding: 15px 10px; } 
+    .grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); } 
+    .player-layout { grid-template-columns: 1fr; padding: 10px; gap: 15px; } 
+    .video-wrapper { border-radius: 12px; }
+}
+
+@media (max-width: 650px) {
+    #u-name-display { display: none !important; }
+    .logo { font-size: 16px; }
+    nav { padding: 0 12px; }
+    #global-search { font-size: 14px !important; padding: 0 15px !important; }
+    .grid { grid-template-columns: 1fr; gap: 20px; }
+    .coin-chip { padding: 4px 8px; font-size: 12px; }
+    button.primary-btn { padding: 12px; font-size: 14px; }
+    .auth-box { padding: 25px 20px; }
+    .settings-card { padding: 15px; }
+    .theme-grid { grid-template-columns: 1fr; }
+    #p-title { font-size: 18px !important; }
+}
+
+@media (max-width: 450px) {
+    .logo { display: none; }
+    .rec-thumb { width: 120px; }
+    .v-thumb-wrap { border-radius: 12px; }
+    .card { padding-bottom: 5px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+    .dots-btn { top: 5px; right: 5px; width: 25px; height: 25px; }
+    #u-coins { font-size: 10px; }
+    .v-avatar { width: 32px !important; height: 32px !important; font-size: 14px; }
+}

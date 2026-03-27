@@ -3,8 +3,14 @@ const DEV_USERS = ["Zoro", "Redtree1222", "redtree"];
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = localStorage.getItem('cem_user'), allVideos = [], allProfiles = [], allRanks = [], allSettings = [], allAudit = [], currentCtx = 'home', authMode = 'login', activeVideo = null, editingId = null;
 
-function toggleSidebar() { document.getElementById('side-bar').classList.toggle('open'); }
-function closeSidebar() { document.getElementById('side-bar').classList.remove('open'); }
+function toggleSidebar() { 
+    document.getElementById('side-bar').classList.toggle('open'); 
+    document.getElementById('side-overlay').style.display = document.getElementById('side-bar').classList.contains('open') ? 'block' : 'none';
+}
+function closeSidebar() { 
+    document.getElementById('side-bar').classList.remove('open'); 
+    document.getElementById('side-overlay').style.display = 'none';
+}
 function logout() { supabaseClient.auth.signOut().then(() => { localStorage.removeItem('cem_user'); location.reload(); }); }
 
 function toggleAuthMode() {
