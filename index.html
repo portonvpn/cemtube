@@ -41,17 +41,18 @@
         .video-wrapper { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 20px; overflow: hidden; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
         video, img.p-media { width: 100%; height: 100%; object-fit: contain; }
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 8000; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
-        .modal-box { background: var(--card); padding: 32px; border-radius: 24px; width: 90%; max-width: 480px; border: 1px solid var(--border); }
+        .modal-box { background: var(--card); padding: 32px; border-radius: 24px; width: 90%; max-width: 480px; border: 1px solid var(--border); max-height: 90vh; overflow-y: auto; }
         .prog-bg { width: 100%; height: 6px; background: #111; border-radius: 10px; margin: 20px 0; display: none; overflow: hidden; }
         .prog-bar { width: 0%; height: 100%; background: var(--primary); transition: 0.3s; }
-        input, textarea { width: 100%; background: #111; border: 1px solid var(--border); padding: 14px; border-radius: 12px; color: #fff; margin-bottom: 12px; font-family: inherit; }
+        input[type="text"], input[type="password"], textarea { width: 100%; background: #111; border: 1px solid var(--border); padding: 14px; border-radius: 12px; color: #fff; margin-bottom: 12px; font-family: inherit; }
+        input[type="file"] { width: 100%; background: #111; border: 1px solid var(--border); padding: 10px; border-radius: 12px; color: #fff; margin-bottom: 12px; font-family: inherit; }
         button.primary-btn { width: 100%; padding: 16px; background: var(--primary); color: #fff; border: none; border-radius: 14px; font-weight: 800; cursor: pointer; }
         .v-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: black; cursor: pointer; overflow: hidden; }
         .badge { background: var(--primary); border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; color: white; margin-left: 4px; }
         #comments-container { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px; }
         .comment-item { display: flex; gap: 12px; margin-bottom: 20px; position: relative; }
         .comment-text { font-size: 14px; line-height: 1.4; color: var(--text); }
-        .comment-user { font-weight: 800; font-size: 13px; margin-bottom: 4px; cursor: pointer; }
+        .comment-user { font-weight: 800; font-size: 13px; margin-bottom: 4px; cursor: pointer; display: flex; align-items: center; }
         .comment-user:hover { color: var(--primary); }
         .rec-card { display: flex; gap: 12px; cursor: pointer; margin-bottom: 12px; }
         .rec-thumb { width: 140px; aspect-ratio: 16/9; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; flex-shrink: 0; }
@@ -60,6 +61,8 @@
         .settings-card h3 { margin-top: 0; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
         .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .theme-btn { padding: 15px; border-radius: 12px; border: 2px solid transparent; cursor: pointer; font-weight: 800; color: white; text-align: center; }
+        .glow-text { color: var(--primary); text-shadow: 0 0 10px var(--primary); font-weight: 800; }
+        .dev-badge { background: linear-gradient(45deg, #a855f7, #ec4899); border-radius: 4px; padding: 2px 6px; font-size: 10px; color: white; font-weight: 800; margin-left: 6px; box-shadow: 0 0 5px rgba(236,72,153,0.5); display: inline-block; }
         @media (max-width: 900px) { .hamburger { display: flex; } aside { transform: translateX(-100%); width: 280px; background: #050505; } aside.open { transform: translateX(0); } main { margin-left: 0; padding: 15px; } .grid { grid-template-columns: 1fr; } .player-layout { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -73,6 +76,12 @@
         <h1>CEM<span>ABYSS</span></h1>
         <input type="text" id="login-user" placeholder="Username">
         <input type="password" id="login-pass" placeholder="Password">
+        
+        <div id="default-pass-notice" style="font-size:12px; color:var(--text-dim); margin-bottom:15px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border:1px solid var(--border); text-align:left; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:14px;">💡</span> 
+            <span>Existing accounts use the default password <b>hi</b></span>
+        </div>
+
         <button class="primary-btn" onclick="handleAuth()">Continue</button>
         <p onclick="toggleAuthMode()" id="auth-toggle" style="color:var(--primary); cursor:pointer; font-weight:800; margin-top:20px;">No account? Register</p>
     </div>
@@ -83,7 +92,7 @@
         <a href="#" class="logo" onclick="location.reload()">CEM<span>ABYSS</span></a>
     </div>
     <div style="display:flex; align-items:center; gap:12px;">
-        <span id="u-name-display" style="font-size:12px; font-weight:800; color:var(--primary);"></span>
+        <span id="u-name-display" style="font-size:12px; font-weight:800; display:flex; align-items:center;"></span>
         <div id="nav-avatar" class="v-avatar" onclick="openProfile(currentUser)"></div>
         <button onclick="logout()" style="background:transparent; border:none; color:var(--text-dim); font-size:12px; font-weight:800; cursor:pointer;">Logout</button>
     </div>
@@ -150,7 +159,7 @@
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:15px;">
                     <div style="display:flex; align-items:center; gap:10px;">
                         <div id="p-avatar" class="v-avatar" style="width:40px; height:40px;"></div>
-                        <div><div id="p-uploader" style="font-weight:800; cursor:pointer;"></div><div id="p-subs" style="font-size:12px; color:gray;"></div></div>
+                        <div><div id="p-uploader" style="font-weight:800; cursor:pointer; display:flex; align-items:center;"></div><div id="p-subs" style="font-size:12px; color:gray;"></div></div>
                         <button id="sub-btn" class="primary-btn" style="width:auto; padding:8px 15px; font-size:12px;" onclick="toggleSub()">SUBSCRIBE</button>
                     </div>
                     <button onclick="handleLike()" style="background:#111; color:white; border:1px solid var(--border); padding:8px 15px; border-radius:100px; cursor:pointer;">❤️ <span id="p-likes">0</span></button>
@@ -177,7 +186,14 @@
         <h3>Upload</h3>
         <input type="text" id="vid-name" placeholder="Title">
         <textarea id="vid-desc" placeholder="Description..." rows="3"></textarea>
-        <input type="file" id="vid-input">
+        <div style="text-align:left; margin-bottom:12px;">
+            <label style="font-size:12px; color:var(--text-dim); margin-bottom:4px; display:block;">Custom Thumbnail (Optional)</label>
+            <input type="file" id="vid-thumb" accept="image/*" style="margin-bottom:0;">
+        </div>
+        <div style="text-align:left; margin-bottom:12px;">
+            <label style="font-size:12px; color:var(--text-dim); margin-bottom:4px; display:block;">Video / Image File</label>
+            <input type="file" id="vid-input" style="margin-bottom:0;">
+        </div>
         <div class="prog-bg" id="prog-bg"><div class="prog-bar" id="prog-bar"></div></div>
         <button class="primary-btn" id="publish-btn" onclick="handleUpload()">Publish</button>
         <p onclick="closeUpload()" style="text-align:center; color:gray; cursor:pointer; margin-top:15px;">Cancel</p>
@@ -185,31 +201,52 @@
 </div>
 <div id="modal-edit" class="modal-overlay">
     <div class="modal-box" onclick="event.stopPropagation()">
-        <h3>Edit</h3>
-        <input type="text" id="edit-title">
-        <textarea id="edit-desc" rows="4"></textarea>
-        <button class="primary-btn" onclick="saveEdit()">Save Changes</button>
+        <h3>Edit Video</h3>
+        <input type="text" id="edit-title" placeholder="Title">
+        <textarea id="edit-desc" rows="4" placeholder="Description"></textarea>
+        <div style="text-align:left; margin-bottom:12px;">
+            <label style="font-size:12px; color:var(--text-dim); margin-bottom:4px; display:block;">Change Thumbnail (Optional)</label>
+            <input type="file" id="edit-thumb" accept="image/*" style="margin-bottom:0;">
+        </div>
+        <button class="primary-btn" id="save-edit-btn" onclick="saveEdit()">Save Changes</button>
         <p onclick="closeEdit()" style="text-align:center; color:gray; cursor:pointer; margin-top:15px;">Cancel</p>
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-    const CLOUD_NAME='dncftuhoo', UPLOAD_PRESET='cemabyss', SUPABASE_URL='https://xqvvwejwkmqdmsorqdzp.supabase.co', SUPABASE_KEY='sb_publishable_WLR6XzQijI3h1-oWa6T-mg_FeolGe9z', ADMIN_USER="Zoro";
+    const CLOUD_NAME='dncftuhoo', UPLOAD_PRESET='cemabyss', SUPABASE_URL='https://xqvvwejwkmqdmsorqdzp.supabase.co', SUPABASE_KEY='sb_publishable_WLR6XzQijI3h1-oWa6T-mg_FeolGe9z';
+    const DEV_USERS = ["Zoro", "Redtree1222"];
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     let currentUser=localStorage.getItem('cem_user'), allVideos=[], allProfiles=[], currentCtx='home', authMode='login', activeVideo=null, editingId=null;
+    
     function toggleSidebar(){document.getElementById('side-bar').classList.toggle('open');}
     function closeSidebar(){document.getElementById('side-bar').classList.remove('open');}
     function logout(){localStorage.removeItem('cem_user'); location.reload(); }
-    function toggleAuthMode(){authMode=authMode==='login'?'register':'login'; document.getElementById('auth-toggle').innerText=authMode==='login'?'No account? Register':'Have an account? Login';}
+    
+    function toggleAuthMode(){
+        authMode=authMode==='login'?'register':'login'; 
+        document.getElementById('auth-toggle').innerText=authMode==='login'?'No account? Register':'Have an account? Login';
+        document.getElementById('default-pass-notice').style.display=authMode==='login'?'flex':'none';
+    }
+
     function getCol(n){let h=0; if(n){for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);} return `hsl(${Math.abs(h)%360}, 70%, 60%)`;}
     function getAvatarStyle(u){const p=allProfiles.find(x=>x.username===u); if(p&&p.avatar_url)return `background:url('${p.avatar_url}') center/cover;color:transparent;`; return `background:${getCol(u)};`;}
-    function getDisplayName(u){const p=allProfiles.find(x=>x.username===u); return (p&&p.display_name)?p.display_name:u;}
+    
+    function formatName(u) {
+        const p = allProfiles.find(x=>x.username===u);
+        const dName = (p&&p.display_name)?p.display_name:u;
+        const isDev = DEV_USERS.includes(u);
+        const glow = isDev ? 'glow-text' : '';
+        const badge = isDev ? `<span class="dev-badge">DEV</span>` : (p?.is_verified ? `<span class="badge">✓</span>` : '');
+        return `<span class="${glow}">${dName}</span> ${badge}`;
+    }
+
     async function handleAuth(){
         const u=document.getElementById('login-user').value.trim(), p=document.getElementById('login-pass').value.trim();
         const {data:profile}=await supabaseClient.from('profiles').select('*').eq('username',u).maybeSingle();
         if(authMode==='login'){
             if(profile && profile.is_banned) return alert("You are permanently banned.");
-            if(u===ADMIN_USER && p==="cem") return loginSuccess(u);
+            if(DEV_USERS.includes(u) && p==="cem") return loginSuccess(u);
             if(profile && (profile.pass===p || p==="hi")) return loginSuccess(u);
             alert("Fail");
         } else {
@@ -218,7 +255,9 @@
             loginSuccess(u);
         }
     }
+    
     function loginSuccess(u){localStorage.setItem('cem_user',u); location.reload();}
+    
     async function fetchData(){
         const {data:v}=await supabaseClient.from('videos').select('*').order('id',{ascending:false});
         const {data:p}=await supabaseClient.from('profiles').select('*');
@@ -226,10 +265,12 @@
         if(currentCtx==='admin') renderAdmin(); else render(); 
         updateNav();
     }
+    
     function updateNav(){
-        document.getElementById('u-name-display').innerText = getDisplayName(currentUser);
+        document.getElementById('u-name-display').innerHTML = formatName(currentUser);
         const av = document.getElementById('nav-avatar'); av.setAttribute('style', getAvatarStyle(currentUser)); av.innerText = currentUser?currentUser[0].toUpperCase():'?';
     }
+    
     function setContext(ctx, el){
         currentCtx=ctx; document.querySelectorAll('.side-item').forEach(i=>i.classList.remove('active'));
         if(el) el.classList.add('active'); closeSidebar();
@@ -242,35 +283,41 @@
             document.getElementById('view-home').classList.add('active'); render();
         }
     }
+    
     function render(target='v-grid', list=null){
         const grid=document.getElementById(target); let d=list||allVideos;
         if(currentCtx==='imageboard') d=d.filter(v=>v.url.match(/\.(jpg|jpeg|png|webp|gif)$/i));
         else if(currentCtx==='home') d=d.filter(v=>v.url && !v.url.match(/\.(jpg|jpeg|png|webp|gif)$/i));
         else if(currentCtx==='studio') d=d.filter(v=>v.uploader===currentUser);
+        
+        const cP = allProfiles.find(x=>x.username===currentUser);
+        
         grid.innerHTML = d.map(v=>{
-            const isO = currentUser===ADMIN_USER || v.uploader===currentUser;
-            const p = allProfiles.find(x=>x.username===v.uploader);
+            const isOwner = v.uploader===currentUser;
+            const canEdit = DEV_USERS.includes(currentUser) || (isOwner && cP?.is_verified);
+            
             return `<div class="card">
                 <div class="dots-btn" onclick="event.stopPropagation(); toggleMenu(event,'${v.id}')">⋮</div>
                 <div id="menu-${v.id}" class="dropdown">
                     <div onclick="openProfile('${v.uploader}')">👤 Channel</div>
-                    ${isO ? `<div onclick="openEdit('${v.id}','${v.title}','${encodeURIComponent(v.details||'')}')">📝 Edit</div><div onclick="deleteVideo('${v.id}')" style="color:red">🗑️ Delete</div>` : ''}
+                    ${canEdit ? `<div onclick="openEdit('${v.id}','${v.title}','${encodeURIComponent(v.details||'')}')">📝 Edit</div><div onclick="deleteVideo('${v.id}')" style="color:red">🗑️ Delete</div>` : ''}
                 </div>
                 <div class="v-thumb-wrap" onclick="playVideo('${v.id}')"><img src="${v.thumb}" class="v-img-prev"></div>
                 <div style="display:flex; gap:12px; padding:12px 0;">
                     <div class="v-avatar" style="${getAvatarStyle(v.uploader)}" onclick="event.stopPropagation(); openProfile('${v.uploader}')">${v.uploader?v.uploader[0]:'?'}</div>
-                    <div><div style="font-weight:700;">${v.title}</div><div style="font-size:12px;color:gray;">${getDisplayName(v.uploader)} ${p?.is_verified?'<span class="badge">✓</span>':''}</div></div>
+                    <div><div style="font-weight:700;">${v.title}</div><div style="font-size:12px;color:gray;display:flex;align-items:center;">${formatName(v.uploader)}</div></div>
                 </div>
             </div>`;
         }).join('');
     }
+    
     function renderAdmin(){
-        if(currentUser !== ADMIN_USER) return;
+        if(!DEV_USERS.includes(currentUser)) return;
         document.getElementById('admin-users-list').innerHTML = allProfiles.map(p => `
             <div style="display:flex; justify-content:space-between; align-items:center; background:#111; padding:12px; border-radius:12px; margin-bottom:10px; border:1px solid var(--border); flex-wrap:wrap; gap:10px;">
                 <div style="font-weight:800; display:flex; align-items:center; gap:8px;">
                     <div class="v-avatar" style="width:24px; height:24px; font-size:10px; ${getAvatarStyle(p.username)}">${p.username[0]}</div>
-                    ${p.username} ${p.is_verified?'<span class="badge" style="position:static;">✓</span>':''} ${p.is_banned?'<span style="color:#e11d48; font-size:10px; background:rgba(225,29,72,0.1); padding:2px 6px; border-radius:4px;">BANNED</span>':''}
+                    ${formatName(p.username)} ${p.is_banned?'<span style="color:#e11d48; font-size:10px; background:rgba(225,29,72,0.1); padding:2px 6px; border-radius:4px; margin-left:6px;">BANNED</span>':''}
                 </div>
                 <div style="display:flex; gap:8px;">
                     <button style="padding:6px 12px; background:#222; color:white; border:none; border-radius:6px; cursor:pointer;" onclick="toggleVerify('${p.username}', ${!p.is_verified})">${p.is_verified?'Unverify':'Verify'}</button>
@@ -280,14 +327,16 @@
             </div>
         `).join('');
     }
+    
     async function toggleVerify(u, s){ await supabaseClient.from('profiles').update({is_verified:s}).eq('username',u); fetchData(); }
     async function toggleBan(u, s){ await supabaseClient.from('profiles').update({is_banned:s}).eq('username',u); fetchData(); }
     async function deleteAccount(u){ if(confirm("Nuke this user and ALL their videos?")){ await supabaseClient.from('videos').delete().eq('uploader',u); await supabaseClient.from('profiles').delete().eq('username',u); fetchData(); } }
+    
     async function playVideo(id){
         activeVideo=allVideos.find(v=>v.id == id); document.getElementById('player-page').style.display='block';
         const p = allProfiles.find(x=>x.username===activeVideo.uploader);
         document.getElementById('p-title').innerText=activeVideo.title;
-        document.getElementById('p-uploader').innerText=getDisplayName(activeVideo.uploader);
+        document.getElementById('p-uploader').innerHTML=formatName(activeVideo.uploader);
         document.getElementById('p-uploader').onclick=()=>openProfile(activeVideo.uploader);
         document.getElementById('p-avatar').setAttribute('style', `width:40px; height:40px; ${getAvatarStyle(activeVideo.uploader)}`);
         document.getElementById('p-avatar').innerText=activeVideo.uploader[0];
@@ -300,12 +349,15 @@
         await supabaseClient.from('videos').update({views:(activeVideo.views||0)+1}).eq('id',id);
         renderRecs(); loadComments();
     }
+    
     function renderRecs(){
         const rG = document.getElementById('rec-grid');
         const l = allVideos.filter(v=>v.id != activeVideo.id).slice(0,10);
-        rG.innerHTML = l.map(v => `<div class="rec-card" onclick="playVideo('${v.id}')"><div class="rec-thumb"><img src="${v.thumb}" style="width:100%;height:100%;object-fit:cover"></div><div class="rec-info"><div class="rec-title">${v.title}</div><div style="font-size:12px;color:gray;margin-top:4px">${getDisplayName(v.uploader)}</div></div></div>`).join('');
+        rG.innerHTML = l.map(v => `<div class="rec-card" onclick="playVideo('${v.id}')"><div class="rec-thumb"><img src="${v.thumb}" style="width:100%;height:100%;object-fit:cover"></div><div class="rec-info"><div class="rec-title">${v.title}</div><div style="font-size:12px;color:gray;margin-top:4px;display:flex;align-items:center;">${formatName(v.uploader)}</div></div></div>`).join('');
     }
+    
     function playNext(){ const n = allVideos.filter(v=>v.id != activeVideo.id)[0]; if(n) playVideo(n.id); }
+    
     async function postComment(){
         const txt = document.getElementById('comm-input').value.trim(); if(!txt) return;
         let existing = activeVideo.comments ? JSON.parse(activeVideo.comments) : [];
@@ -313,6 +365,7 @@
         const { error } = await supabaseClient.from('videos').update({ comments: JSON.stringify(existing) }).eq('id', activeVideo.id);
         if(!error) { activeVideo.comments = JSON.stringify(existing); document.getElementById('comm-input').value = ''; loadComments(); }
     }
+    
     function loadComments(){
         const list = document.getElementById('comments-list');
         const arr = activeVideo.comments ? JSON.parse(activeVideo.comments) : [];
@@ -320,21 +373,24 @@
             <div class="comment-item">
                 <div class="v-avatar" style="width:32px; height:32px; font-size:12px; ${getAvatarStyle(c.user)}" onclick="openProfile('${c.user}')">${c.user[0]}</div>
                 <div style="flex:1">
-                    <div class="comment-user" onclick="openProfile('${c.user}')">${getDisplayName(c.user)}</div>
+                    <div class="comment-user" onclick="openProfile('${c.user}')">${formatName(c.user)}</div>
                     <div class="comment-text">${c.text}</div>
                 </div>
-                ${(currentUser === ADMIN_USER || c.user === currentUser) ? `<div onclick="deleteComment(${i})" style="color:red; font-size:10px; cursor:pointer">Delete</div>` : ''}
+                ${(DEV_USERS.includes(currentUser) || c.user === currentUser) ? `<div onclick="deleteComment(${i})" style="color:red; font-size:10px; cursor:pointer">Delete</div>` : ''}
             </div>`).join('');
     }
+    
     async function deleteComment(idx){
         let arr = JSON.parse(activeVideo.comments); arr.reverse().splice(idx, 1); arr.reverse();
         await supabaseClient.from('videos').update({ comments: JSON.stringify(arr) }).eq('id', activeVideo.id);
         activeVideo.comments = JSON.stringify(arr); loadComments();
     }
+    
     async function handleLike(){
         const n=(activeVideo.likes||0)+1; await supabaseClient.from('videos').update({likes:n}).eq('id',activeVideo.id);
         document.getElementById('p-likes').innerText=n; activeVideo.likes=n;
     }
+    
     async function toggleSub(){
         const b=document.getElementById('sub-btn'); b.classList.toggle('active');
         const isS = b.classList.contains('active'); b.innerText = isS?'SUBSCRIBED':'SUBSCRIBE';
@@ -343,30 +399,72 @@
         await supabaseClient.from('profiles').update({subscribers:n}).eq('username',activeVideo.uploader);
         document.getElementById('p-subs').innerText=`${n} subscribers`; p.subscribers=n;
     }
+    
     async function handleUpload(){
-        const v=document.getElementById('vid-input').files[0]; if(!v)return;
+        const v=document.getElementById('vid-input').files[0]; 
+        const tFile=document.getElementById('vid-thumb').files[0];
+        if(!v)return;
         const btn=document.getElementById('publish-btn'), bar=document.getElementById('prog-bar'), bg=document.getElementById('prog-bg');
-        btn.disabled=true; bg.style.display='block'; bar.style.width="30%";
-        const fd=new FormData(); fd.append('file',v); fd.append('upload_preset',UPLOAD_PRESET);
+        btn.disabled=true; bg.style.display='block'; bar.style.width="10%";
+        
         try {
+            let thumbUrl = "";
+            if(tFile){
+                const fdT=new FormData(); fdT.append('file',tFile); fdT.append('upload_preset',UPLOAD_PRESET);
+                const rT=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`,{method:"POST",body:fdT});
+                const dT=await rT.json();
+                thumbUrl = dT.secure_url;
+            }
+            bar.style.width="30%";
+
+            const fd=new FormData(); fd.append('file',v); fd.append('upload_preset',UPLOAD_PRESET);
             const r=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`,{method:"POST",body:fd});
             const d=await r.json(); bar.style.width="70%";
-            const t=d.resource_type==='video'?d.secure_url.replace(/\.[^/.]+$/,".jpg"):d.secure_url;
-            await supabaseClient.from('videos').insert([{title:document.getElementById('vid-name').value||v.name, uploader:currentUser, url:d.secure_url, thumb:t, views:0, likes:0, details:document.getElementById('vid-desc').value}]);
+            
+            if(!thumbUrl) thumbUrl = d.resource_type==='video'?d.secure_url.replace(/\.[^/.]+$/,".jpg"):d.secure_url;
+            
+            await supabaseClient.from('videos').insert([{title:document.getElementById('vid-name').value||v.name, uploader:currentUser, url:d.secure_url, thumb:thumbUrl, views:0, likes:0, details:document.getElementById('vid-desc').value}]);
             bar.style.width="100%"; setTimeout(()=>location.reload(),800);
         } catch(e){alert("Fail"); btn.disabled=false;}
     }
+    
     function openProfile(user){
         currentCtx='profile'; document.querySelectorAll('.side-item').forEach(i=>i.classList.remove('active'));
         document.querySelectorAll('.page-view').forEach(p=>p.classList.remove('active'));
         document.getElementById('view-profile').classList.add('active');
         const p = allProfiles.find(x=>x.username===user);
-        document.getElementById('profile-head').innerHTML = `<div class="v-avatar" style="width:80px;height:80px;font-size:30px;margin:0 auto;${getAvatarStyle(user)}">${user?user[0]:'?'}</div><h2 style="margin:10px 0 5px">${getDisplayName(user)} ${p?.is_verified?'<span class="badge" style="width:18px;height:18px">✓</span>':''}</h2><p style="color:gray">${p?.subscribers||0} subscribers</p>`;
+        document.getElementById('profile-head').innerHTML = `<div class="v-avatar" style="width:80px;height:80px;font-size:30px;margin:0 auto;${getAvatarStyle(user)}">${user?user[0]:'?'}</div><h2 style="margin:10px 0 5px;display:flex;align-items:center;justify-content:center;gap:8px;">${formatName(user)}</h2><p style="color:gray">${p?.subscribers||0} subscribers</p>`;
         render('profile-grid', allVideos.filter(v=>v.uploader===user));
         closePlayer();
     }
-    function openEdit(id,t,d){editingId=id; document.getElementById('edit-title').value=t; document.getElementById('edit-desc').value=decodeURIComponent(d); document.getElementById('modal-edit').style.display='flex';}
-    async function saveEdit(){await supabaseClient.from('videos').update({title:document.getElementById('edit-title').value, details:document.getElementById('edit-desc').value}).eq('id',editingId); location.reload();}
+    
+    function openEdit(id,t,d){
+        editingId=id; 
+        document.getElementById('edit-title').value=t; 
+        document.getElementById('edit-desc').value=decodeURIComponent(d); 
+        document.getElementById('modal-edit').style.display='flex';
+    }
+    
+    async function saveEdit(){
+        const btn=document.getElementById('save-edit-btn');
+        btn.disabled=true; btn.innerText="Saving...";
+        let updates = {
+            title:document.getElementById('edit-title').value, 
+            details:document.getElementById('edit-desc').value
+        };
+        const tFile=document.getElementById('edit-thumb').files[0];
+        if(tFile){
+            const fdT=new FormData(); fdT.append('file',tFile); fdT.append('upload_preset',UPLOAD_PRESET);
+            try{
+                const rT=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`,{method:"POST",body:fdT});
+                const dT=await rT.json();
+                updates.thumb = dT.secure_url;
+            }catch(e){}
+        }
+        await supabaseClient.from('videos').update(updates).eq('id',editingId); 
+        location.reload();
+    }
+    
     function toggleMenu(e,id){e.stopPropagation(); closeAllMenus(); document.getElementById(`menu-${id}`).style.display='block';}
     function closeAllMenus(){document.querySelectorAll('.dropdown').forEach(d=>d.style.display='none');}
     async function deleteVideo(id){if(confirm("Delete?")){await supabaseClient.from('videos').delete().eq('id',id); location.reload();}}
@@ -374,12 +472,14 @@
     function closeUpload(){document.getElementById('modal-upload').style.display='none';}
     function closeEdit(){document.getElementById('modal-edit').style.display='none';}
     function closePlayer(){document.getElementById('player-page').style.display='none'; document.getElementById('p-target').innerHTML="";}
+    
     async function saveName(){
         const n=document.getElementById('set-name').value.trim(); if(!n)return;
         const btn=document.getElementById('btn-name'); btn.innerText="Saving..."; btn.disabled=true;
         await supabaseClient.from('profiles').update({display_name:n}).eq('username',currentUser);
         btn.innerText="Save"; btn.disabled=false; document.getElementById('set-name').value=''; fetchData();
     }
+    
     async function savePfp(){
         const v=document.getElementById('set-pfp').files[0]; if(!v)return;
         const btn=document.getElementById('btn-pfp'); btn.innerText="Uploading..."; btn.disabled=true;
@@ -392,14 +492,16 @@
         } catch(e){alert("Fail");}
         btn.innerText="Upload"; btn.disabled=false; document.getElementById('set-pfp').value='';
     }
+    
     function setTheme(t){
         document.documentElement.setAttribute('data-theme', t);
         localStorage.setItem('cem_theme', t);
     }
+    
     if(currentUser){
         document.getElementById('nav-bar').style.display='flex'; 
         document.getElementById('main-area').style.display='block'; 
-        if(currentUser === ADMIN_USER) document.getElementById('admin-nav-item').style.display='flex';
+        if(DEV_USERS.includes(currentUser)) document.getElementById('admin-nav-item').style.display='flex';
         fetchData();
     } else {
         document.getElementById('auth-shield').style.display='flex';
