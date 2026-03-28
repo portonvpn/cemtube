@@ -123,7 +123,9 @@ async function handleAuth() {
 function loginSuccess(u) { localStorage.setItem('cem_user', u); location.reload(); }
 
 async function fetchData() {
-    if(window.location.hash) history.replaceState(null, '', window.location.pathname);
+    if(window.location.hash && window.location.protocol !== 'file:') {
+        history.replaceState(null, '', window.location.pathname);
+    }
     const { data: v } = await supabaseClient.from('videos').select('*').order('id', { ascending: false });
     const { data: p } = await supabaseClient.from('profiles').select('*');
     const { data: r } = await supabaseClient.from('ranks').select('*');
