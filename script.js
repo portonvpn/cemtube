@@ -75,7 +75,7 @@ function formatName(u) {
 
 async function handleAuth() {
     let inputEmail = document.getElementById('login-email').value.trim();
-    const p = document.getElementById('login-pass').value.trim();
+    const p = document.getElementById('login-pass').value; // Don't trim passwords!
     const u = document.getElementById('login-user').value.trim();
     const regE = document.getElementById('reg-email').value.trim();
 
@@ -136,7 +136,11 @@ async function handleAuth() {
             password: p
         });
 
-        if (error) return alert(error.message);
+        if (error) {
+            let msg = error.message;
+            if (!inputEmail.includes('@')) msg += " (Try logging in with your Email once if your Username fails)";
+            return alert(msg);
+        }
 
         if (data.user) {
             const uname = data.user.user_metadata.username;
