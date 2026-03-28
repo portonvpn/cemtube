@@ -122,12 +122,13 @@ async function handleAuth() {
 
         let emailToSignIn = inputEmail;
         if (!inputEmail.includes('@')) {
-            const { data: prof } = await supabaseClient.from('profiles').select('email_lookup').eq('username', inputEmail).maybeSingle();
+            const { data: prof } = await supabaseClient.from('profiles').select('email_lookup').ilike('username', inputEmail).maybeSingle();
             if (prof && prof.email_lookup) {
                 emailToSignIn = prof.email_lookup;
             } else {
                 // Fallback for legacy users without email_lookup column populated
-                emailToSignIn = `${inputEmail}@cemabyss.local`;
+                // Note: Auth emails are case-insensitive, so we use lowercase for fallback
+                emailToSignIn = `${inputEmail}@cemabyss.local`.toLowerCase();
             }
         }
 
