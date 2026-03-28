@@ -136,10 +136,44 @@ async function handleAuth() {
             if (prof && prof.email_lookup) {
                 emailToSignIn = prof.email_lookup;
             } else {
-                // Fallback for legacy users without email_lookup column populated
-                // Note: Auth emails are case-insensitive, so we use lowercase/sanitized for fallback
+                // Dual Fallback for legacy compatibility
                 const cleanU = inputEmail.toLowerCase().replace(/[^a-z0-9]/g, '');
-                emailToSignIn = `${cleanU}@cemabyss.com`;
+                const { data: dCom, error: eCom } = await supabaseClient.auth.signInWithPassword({
+                    email: `${cleanU}@cemabyss.com`,
+                    password: p
+                });
+
+                if (!eCom) {
+                    if (dCom.user) {
+                        const uname = dCom.user.user_metadata.username;
+                        if (uname) {
+                            await supabaseClient.from('profiles').update({ email_lookup: dCom.user.email }).eq('username', uname);
+                            loginSuccess(uname);
+                        }
+                    }
+                    return;
+                }
+
+                // If .com failed, try legacy .local (no sanitization, just like before)
+                const { data: dLoc, error: eLoc } = await supabaseClient.auth.signInWithPassword({
+                    email: `${inputEmail}@cemabyss.local`.toLowerCase(),
+                    password: p
+                });
+
+                if (!eLoc) {
+                    if (dLoc.user) {
+                        const uname = dLoc.user.user_metadata.username;
+                        if (uname) {
+                            await supabaseClient.from('profiles').update({ email_lookup: dLoc.user.email }).eq('username', uname);
+                            loginSuccess(uname);
+                        }
+                    }
+                    return;
+                }
+
+                let msg = eLoc.message;
+                msg += " (Try logging in with your Email once if your Username fails)";
+                return alert(msg);
             }
         }
 
