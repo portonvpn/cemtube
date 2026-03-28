@@ -140,60 +140,22 @@ async function fetchData() {
     if (currentCtx === 'home') render('v-grid', null);
     updateNav();
 
-    // Initial routing logic
-    if(!window.routingHandled) {
-        let hash = window.location.hash.slice(1);
-        if(hash.startsWith('video/')) {
-            const vidId = hash.split('/')[1];
-            playVideo(vidId);
-        } else if(hash) {
-            setContext(hash.replace('/', ''), null, true);
-        }
-        window.routingHandled = true;
-    }
+    if (currentCtx === 'home') render('v-grid', null);
+    updateNav();
 }
 
-window.onhashchange = () => {
-    const hash = window.location.hash.slice(1);
-    if (hash.startsWith('video/')) {
-        const id = hash.split('/')[1];
-        playVideo(id);
-    } else if (hash) {
-        setContext(hash.replace('/', ''), null, true);
-    } else {
-        closePlayer();
-        setContext('home', null, true);
-    }
-};
-
-window.onpopstate = (e) => {
-    if(e.state && e.state.ctx) {
-        if(e.state.ctx === 'video' && e.state.id) playVideo(e.state.id);
-        else { closePlayer(); setContext(e.state.ctx, null, true); }
-    }
-};
 
 function updateNav() {
     document.getElementById('u-name-display').innerHTML = formatName(currentUser);
     const av = document.getElementById('nav-avatar'); av.setAttribute('style', getAvatarStyle(currentUser)); av.innerText = currentUser ? currentUser[0].toUpperCase() : '?';
 }
 
-function setContext(ctx, el, skipPush = false) {
+function setContext(ctx, el) {
     currentCtx = ctx; 
     document.querySelectorAll('.side-item').forEach(i => i.classList.remove('active'));
     if (el) el.classList.add('active'); closeSidebar();
     document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
-    
-    // Update active state based on ctx if no element provided
-    if(!el) {
-        document.querySelectorAll('.side-item').forEach(i => {
-           if(i.getAttribute('onclick').includes(ctx)) i.classList.add('active');
-        });
-    }
 
-    if (!skipPush) {
-        window.location.hash = ctx === 'home' ? '/home' : ctx;
-    }
 
     if (ctx === 'settings') {
         document.getElementById('view-settings').classList.add('active'); renderSettings();
@@ -643,7 +605,6 @@ async function playVideo(id) {
     if (currentUser && v.likes?.includes(currentUser)) likeBtn.style.background = "var(--primary)";
     else likeBtn.style.background = "#111";
 
-    window.location.hash = `video/${id}`;
     loadComments();
     renderRecs();
 }
@@ -870,7 +831,6 @@ function closeEdit() { document.getElementById('modal-edit').style.display = 'no
 function closePlayer() { 
     document.getElementById('player-page').style.display = 'none'; 
     document.getElementById('p-target').innerHTML = ""; 
-    window.location.hash = currentCtx === 'home' ? '/home' : currentCtx;
 }
 
 async function pinVideo(id) {
