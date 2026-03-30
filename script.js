@@ -371,6 +371,12 @@ function setContext(ctx, el) {
         renderAnnouncements();
     } else if (ctx === 'profile') {
         // Handled by openProfile
+    } else if (ctx === 'liked') {
+        if (!currentUser) return openAuth();
+        render('liked-grid');
+    } else if (ctx === 'subscriptions') {
+        if (!currentUser) return openAuth();
+        renderSubscriptions();
     } else {
         if (ctx === 'studio' && !currentUser) return openAuth();
         render();
@@ -384,9 +390,18 @@ function openUpload() {
 
 function render(target = 'v-grid', list = null) {
     const grid = document.getElementById(target); let d = list || allVideos;
-    if (currentCtx === 'imageboard') d = d.filter(v => v.url.match(/\.(jpg|jpeg|png|webp|gif)$/i));
-    else if (currentCtx === 'home') d = d.filter(v => v.url && !v.url.match(/\.(jpg|jpeg|png|webp|gif)$/i));
+    const isImage = (url) => url && url.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+    if (currentCtx === 'imageboard') d = d.filter(v => isImage(v.url));
+    else if (currentCtx === 'home') d = d.filter(v => !isImage(v.url));
     else if (currentCtx === 'studio') d = d.filter(v => v.uploader === currentUser);
+    else if (currentCtx === 'liked') {
+        const myLikes = JSON.parse(localStorage.getItem(`cem_likes_${currentUser}`) || '[]');
+        d = d.filter(v => myLikes.includes(v.id));
+    }
+    else if (currentCtx === 'subscriptions') {
+        const mySubs = JSON.parse(localStorage.getItem(`cem_subs_${currentUser}`) || '[]');
+        d = d.filter(v => mySubs.includes(v.uploader));
+    }
 
     d = d.filter(v => {
         if (DEV_USERS.includes(currentUser) || v.uploader === currentUser) return true;
@@ -423,10 +438,15 @@ function render(target = 'v-grid', list = null) {
         }
     }
 
+    // Create high-performance hover-play attribute
+    const playLogic = `try { this.querySelector('.hover-vid').play(); this.querySelector('.hover-vid').playbackRate = 0.5; this.querySelector('.v-img-prev').style.opacity = 0; } catch(e){}`;
+    const pauseLogic = `try { this.querySelector('.hover-vid').pause(); this.querySelector('.hover-vid').currentTime = 0; this.querySelector('.v-img-prev').style.opacity = 1; } catch(e){}`;
+
     let html = d.map(v => `
-        <div class="card" onclick="openVideo('${v.id}')">
+        <div class="card" onclick="openVideo('${v.id}')" onmouseenter="${playLogic}" onmouseleave="${pauseLogic}">
             <div class="v-thumb-wrap">
-                <img src="${v.thumb}" class="v-img-prev">
+                <img src="${v.thumb}" class="v-img-prev" style="transition:0.3s;">
+                ${v.url && !v.url.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? `<video src="${v.url}" class="hover-vid" muted loop playsinline preload="none" style="width:100%; height:100%; object-fit:cover; position:absolute; inset:0;"></video>` : ''}
                 <div class="dots-btn" onclick="toggleMenu(event, '${v.id}')">⋮</div>
                 <div id="menu-${v.id}" class="dropdown">
                     <div onclick="shareVideo(event, '${v.id}')">🔗 Share Link</div>
@@ -434,7 +454,7 @@ function render(target = 'v-grid', list = null) {
                     ${DEV_USERS.includes(currentUser) ? `<div onclick="pinVideo('${v.id}')">📌 Pin Globally</div>` : ''}
                 </div>
             </div>
-            <div style="display:flex; gap:12px; margin-top:12px;">
+            <div style="display:flex; gap:12px; margin-top:12px; z-index:10; position:relative;">
                 <div class="v-avatar" style="${getAvatarStyle(v.uploader)}" onclick="event.stopPropagation(); openProfile('${v.uploader}')">${v.uploader[0]}</div>
                 <div style="flex:1;">
                     <div style="font-weight:700; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;" title="${v.title}">${v.title}</div>
@@ -444,7 +464,8 @@ function render(target = 'v-grid', list = null) {
                 </div>
             </div>
         </div>`).join('');
-    grid.innerHTML = html;
+    if (d.length === 0) grid.innerHTML = `<p style="color:gray; padding:20px;">No content found here yet.</p>`;
+    else grid.innerHTML = html;
 }
 
 function handleSearch() {
@@ -1194,6 +1215,97 @@ async function toggleSub() {
     isSubbing = false;
 }
 
+let isSubbingProf = false;
+async function toggleSubFromProfile(u) {
+    if (!currentUser) return openAuth();
+    if (isSubbingProf) return;
+    isSubbingProf = true;
+
+    let localSubs = JSON.parse(localStorage.getItem(`cem_subs_${currentUser}`) || '[]');
+    const isSubbed = localSubs.includes(u);
+    const p = allProfiles.find(x => x.username === u);
+    let n = p.subscribers || 0;
+
+    const btn = document.getElementById('profile-sub-btn');
+
+    if (!isSubbed) {
+        n += 1;
+        localSubs.push(u);
+        pushNotif(u, 'sub', { from: currentUser });
+        if (btn) { btn.innerText = 'SUBSCRIBED'; btn.style.background = '#222'; }
+    } else {
+        n = Math.max(0, n - 1);
+        localSubs = localSubs.filter(x => x !== u);
+        if (btn) { btn.innerText = 'SUBSCRIBE'; btn.style.background = 'var(--primary)'; }
+    }
+
+    localStorage.setItem(`cem_subs_${currentUser}`, JSON.stringify(localSubs));
+    p.subscribers = n;
+    
+    const statEl = document.getElementById('p-stats');
+    if (statEl) statEl.innerHTML = `<span style="color:#fff; letter-spacing:1px;">${n} SUBSCRIBERS</span>`;
+
+    await supabaseClient.from('profiles').update({ subscribers: n }).eq('username', u);
+    isSubbingProf = false;
+}
+
+function renderSubscriptions() {
+    const list = document.getElementById('subs-grid');
+    list.className = ''; // Expand to full width blocks
+    const mySubs = JSON.parse(localStorage.getItem(`cem_subs_${currentUser}`) || '[]');
+    
+    if (mySubs.length === 0) {
+        list.innerHTML = `<p style="color:gray; padding:20px;">You haven't subscribed to anyone yet.</p>`;
+        return;
+    }
+
+    let html = '';
+    mySubs.forEach(u => {
+        const p = allProfiles.find(x => x.username === u);
+        if (!p) return;
+        const dName = p.display_name || u;
+        let pVideos = allVideos.filter(v => v.uploader === u);
+        
+        if (!DEV_USERS.includes(currentUser) && currentUser !== u && p.is_shadowbanned) return;
+
+        // Sort latest 4 videos
+        pVideos.sort((a,b) => b.id - a.id);
+        const latest = pVideos.slice(0, 4);
+
+        const playLogic = `try { this.querySelector('.hover-vid').play(); this.querySelector('.hover-vid').playbackRate = 0.5; this.querySelector('.v-img-prev').style.opacity = 0; } catch(e){}`;
+        const pauseLogic = `try { this.querySelector('.hover-vid').pause(); this.querySelector('.hover-vid').currentTime = 0; this.querySelector('.v-img-prev').style.opacity = 1; } catch(e){}`;
+
+        let vHtml = latest.map(v => `
+            <div class="card" onclick="openVideo('${v.id}')" onmouseenter="${playLogic}" onmouseleave="${pauseLogic}" style="min-width:220px; max-width:250px; cursor:pointer;">
+                <div class="v-thumb-wrap" style="aspect-ratio:16/9; border-radius:12px; overflow:hidden; position:relative;">
+                    <img src="${v.thumb}" class="v-img-prev" style="width:100%; height:100%; object-fit:cover; transition:0.3s;">
+                    ${v.url && !v.url.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? `<video src="${v.url}" class="hover-vid" muted loop playsinline preload="none" style="width:100%; height:100%; object-fit:cover; position:absolute; inset:0;"></video>` : ''}
+                </div>
+                <div style="font-weight:700; font-size:13px; margin-top:8px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;" title="${v.title}">${v.title}</div>
+            </div>
+        `).join('');
+
+        if (latest.length === 0) vHtml = `<div style="color:gray; font-size:12px; padding:10px;">No videos uploaded yet.</div>`;
+
+        html += `
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:24px; padding:20px; display:flex; flex-direction:column; gap:15px; margin-bottom:20px;">
+                <div style="display:flex; align-items:center; gap:15px; cursor:pointer;" onclick="openProfile('${u}')">
+                    <div class="v-avatar" style="width:50px; height:50px; font-size:20px; border-radius:50%; ${getAvatarStyle(u)}">${u[0]}</div>
+                    <div style="flex:1;">
+                        <div style="font-size:18px; font-weight:800; display:flex; gap:8px; align-items:center;">
+                            ${formatName(u)}
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:15px; overflow-x:auto; padding-bottom:10px;">
+                    ${vHtml}
+                </div>
+            </div>
+        `;
+    });
+    list.innerHTML = html;
+}
+
 let currentUploadFile = null;
 
 function handleFileSelect(input) {
@@ -1340,12 +1452,20 @@ function openProfile(user) {
     `;
 
     // Name Area
+    const localSubs = JSON.parse(localStorage.getItem(`cem_subs_${currentUser}`) || '[]');
     document.getElementById('p-name-area').innerHTML = `
         <div style="display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;">
             <h1 style="margin:0; font-size:36px; color:#fff; text-shadow: 0 0 20px ${bColor};">${p.display_name || user}</h1>
             ${getRankBadge(user)}
         </div>
         <div style="color:rgba(255,255,255,0.6); font-size:18px; margin-top:8px;">@${user}</div>
+        ${user !== currentUser ? `
+            <div style="margin-top:20px;">
+                <button id="profile-sub-btn" class="primary-btn" style="width:auto; padding:10px 30px; font-size:14px; background:${localSubs.includes(user) ? '#222' : 'var(--primary)'}; border:none; border-radius:100px; font-weight:800; cursor:pointer; transition:0.3s;" onclick="toggleSubFromProfile('${user}')">
+                    ${localSubs.includes(user) ? 'SUBSCRIBED' : 'SUBSCRIBE'}
+                </button>
+            </div>
+        ` : ''}
     `;
 
     // Bio
@@ -1709,36 +1829,52 @@ function toggleNotifs() {
     if (drp.classList.contains('active')) renderNotifs();
 }
 
+let notifsMax = 4;
+function expandNotifs(e) { e.stopPropagation(); notifsMax = 99; renderNotifs(); }
+
 function renderNotifs() {
     const list = document.getElementById('notif-list');
     const p = allProfiles.find(x => x.username === currentUser);
     if (!p) return;
-    const notifs = p.notifications ? (typeof p.notifications === 'string' ? JSON.parse(p.notifications) : p.notifications) : [];
+    const notifsRaw = p.notifications ? (typeof p.notifications === 'string' ? JSON.parse(p.notifications) : p.notifications) : [];
     
-    list.innerHTML = notifs.reverse().map(n => {
+    const validNotifs = [];
+    notifsRaw.forEach(n => {
         let msg = "";
-        let sender = n.data.anon ? "Anonymous User" : n.data.from;
-        let onClick = n.data.anon ? "" : `onclick="openProfile('${n.data.from}')" style="cursor:pointer; color:var(--primary);"`;
+        let sender = (n.data && n.data.anon) ? "Anonymous User" : (n.data ? n.data.from : 'Unknown');
+        let onClick = (n.data && n.data.anon) ? "" : `onclick="openProfile('${sender}')" style="cursor:pointer; color:var(--primary);"`;
         
         let linkAction = "";
-        if (n.data.videoId) {
+        if (n.data && n.data.videoId) {
             const slug = n.data.slug || n.data.videoId;
             const cParam = n.data.commentId ? `&c=${n.data.commentId}` : '';
             linkAction = `onclick="window.location.href='?v=${slug}${cParam}'" style="cursor:pointer;"`;
         }
 
-        if (n.type === 'like') msg = `<span ${linkAction}><b ${onClick}>${sender}</b> liked your video <i>"${truncate(n.data.videoTitle)}"</i></span>`;
+        if (n.type === 'like') msg = `<span ${linkAction}><b ${onClick}>${sender}</b> liked your video <i>"${truncate(n.data.videoTitle || 'a video')}"</i></span>`;
         if (n.type === 'comment') msg = `<span ${linkAction}><b ${onClick}>${sender}</b> commented: <i>"${truncate(n.data.content, 30)}"</i></span>`;
         if (n.type === 'reply') msg = `<span ${linkAction}><b ${onClick}>${sender}</b> replied: <i>"${truncate(n.data.content, 30)}"</i></span>`;
         if (n.type === 'sub') msg = `<b ${onClick}>${sender}</b> subscribed to you!`;
 
-        return `<div class="notif-item" style="padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px; line-height:1.4;">
-            ${msg}
-            <div style="font-size:10px; color:gray; margin-top:4px;">${new Date(n.id).toLocaleTimeString()}</div>
-        </div>`;
-    }).join('') || '<div style="padding:40px 20px; text-align:center; color:gray;">All caught up! ✨</div>';
+        if (msg) validNotifs.push({ ...n, builtHtml: msg });
+    });
 
-    // Mark as seen
+    const reversed = validNotifs.reverse();
+    const showing = reversed.slice(0, notifsMax);
+
+    let html = showing.map(n => `
+        <div class="notif-item" style="padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px; line-height:1.4;">
+            ${n.builtHtml}
+            <div style="font-size:10px; color:gray; margin-top:4px;">${new Date(n.id).toLocaleTimeString()}</div>
+        </div>
+    `).join('');
+
+    if (reversed.length === 0) html = '<div style="padding:40px 20px; text-align:center; color:gray;">All caught up! ✨</div>';
+    else if (reversed.length > notifsMax) {
+        html += `<div onclick="expandNotifs(event)" style="padding:12px; text-align:center; font-size:12px; font-weight:800; color:var(--primary); cursor:pointer; background:rgba(0,0,0,0.3);">View ${reversed.length - notifsMax} More</div>`;
+    }
+
+    list.innerHTML = html;
     updateNotifBadge(0);
 }
 

@@ -125,6 +125,8 @@
     <aside id="side-bar">
         <div class="side-item active" onclick="setContext('home', this)">🏠 Home</div>
         <div class="side-item" onclick="setContext('studio', this)">🎬 Studio</div>
+        <div class="side-item" onclick="setContext('liked', this)">❤️ Liked Videos</div>
+        <div class="side-item" onclick="setContext('subscriptions', this)">📺 Subscriptions</div>
         <div class="side-item" onclick="setContext('announcements', this)">📢 Announcements</div>
         <div class="side-item" onclick="setContext('imageboard', this)">🖼️ Imageboard</div>
         <div class="side-item" onclick="setContext('marketplace', this)">🛍️ Marketplace</div>
@@ -137,6 +139,14 @@
         <div id="view-home" class="page-view active">
             <div id="pinned-container"></div>
             <div class="grid" id="v-grid"></div>
+        </div>
+        <div id="view-liked" class="page-view">
+            <h2 style="margin-top:0; color:var(--primary);">Liked Videos</h2>
+            <div class="grid" id="liked-grid"></div>
+        </div>
+        <div id="view-subscriptions" class="page-view">
+            <h2 style="margin-top:0; color:var(--primary);">Subscriptions</h2>
+            <div class="grid" id="subs-grid"></div>
         </div>
         <div id="view-announcements" class="page-view">
             <h2 style="margin-top:0; color:var(--primary);">System Announcements</h2>
