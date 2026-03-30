@@ -897,6 +897,9 @@ async function openVideo(id) {
     const slug = activeVideo.video_id || activeVideo.id;
     const currentUrl = new URL(window.location);
     if (window.location.protocol !== 'file:' && currentUrl.pathname !== '/v/' + slug) {
+        if (!currentUrl.pathname.startsWith('/v/')) {
+            window.lastUrlBeforeVideo = currentUrl.pathname + currentUrl.search;
+        }
         const newUrl = window.location.origin + '/v/' + slug;
         window.history.pushState({ path: newUrl }, '', newUrl);
     }
@@ -1543,7 +1546,8 @@ function closePlayer() {
     document.getElementById('player-page').style.display = 'none'; 
     document.getElementById('p-target').innerHTML = ""; 
     if (window.location.protocol !== 'file:') {
-        const newUrl = window.location.origin + window.location.pathname;
+        const fallBackUrl = window.lastUrlBeforeVideo || '/';
+        const newUrl = window.location.origin + fallBackUrl;
         window.history.pushState({ path: newUrl }, '', newUrl);
     }
 }
