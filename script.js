@@ -1474,6 +1474,8 @@ function updateNotifBadge(count) {
     } else {
         b.style.display = 'none';
     }
+}
+
 async function buyTheme(tid, price) {
     const p = allProfiles.find(x => x.username === currentUser);
     if (!p) return;
