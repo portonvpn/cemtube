@@ -233,6 +233,41 @@ async function fetchData() {
     if (currentCtx === 'announcements') renderAnnouncements();
     if (currentCtx === 'settings') renderSettings();
     updateNav();
+    handleRouting();
+}
+
+function handleRouting() {
+    const params = new URLSearchParams(window.location.search);
+    const vId = params.get('v');
+    const cId = params.get('c');
+    
+    if (vId) {
+        const vid = allVideos.find(x => (x.video_id === vId || x.id == vId));
+        if (vid) {
+            openVideo(vid.id);
+            if (cId) {
+                // Wait for comments to render then highlight
+                setTimeout(() => highlightComment(cId), 1000);
+            }
+        }
+    }
+}
+
+window.onpopstate = () => handleRouting();
+
+function highlightComment(id) {
+    const el = document.getElementById(`comment-${id}`);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = '0.5s';
+        el.style.background = 'rgba(168, 85, 247, 0.2)';
+        el.style.boxShadow = '0 0 20px rgba(168, 85, 247, 0.4)';
+        el.style.borderRadius = '12px';
+        setTimeout(() => {
+            el.style.background = 'transparent';
+            el.style.boxShadow = 'none';
+        }, 3000);
+    }
 }
 
 function updateNav() {
@@ -769,8 +804,19 @@ async function deleteAccount(u) {
     }
 }
 
-async function playVideo(id) {
-    activeVideo = allVideos.find(v => v.id == id); document.getElementById('player-page').style.display = 'block';
+async function openVideo(id) {
+    activeVideo = allVideos.find(v => v.id == id); 
+    if (!activeVideo) return;
+
+    // Update URL without reloading (only if changed)
+    const slug = activeVideo.video_id || activeVideo.id;
+    const currentUrl = new URL(window.location);
+    if (currentUrl.searchParams.get('v') !== slug.toString()) {
+        const newUrl = window.location.origin + window.location.pathname + '?v=' + slug;
+        window.history.pushState({ path: newUrl }, '', newUrl);
+    }
+
+    document.getElementById('player-page').style.display = 'block';
     const p = allProfiles.find(x => x.username === activeVideo.uploader);
     document.getElementById('p-title').innerText = activeVideo.title;
     document.getElementById('p-uploader').innerHTML = formatName(activeVideo.uploader);
@@ -872,7 +918,7 @@ function loadComments() {
                 </div>
                 <div id="replies-${p.id}" style="margin-top:10px; border-left: 2px solid var(--border); padding-left:15px;">
                     ${children.filter(c => c.parentId == p.id).map(c => `
-                        <div class="comment-item" style="margin-top:10px; padding:0;">
+                        <div class="comment-item" id="comment-${c.id}" style="margin-top:10px; padding:0;">
                             <div class="v-avatar" style="width:28px; height:28px; font-size:10px; ${getAvatarStyle(c.user)}" onclick="openProfile('${c.user}')">${c.user[0]}</div>
                             <div style="flex:1">
                                 <div style="display:flex; align-items:center; gap:8px;">
@@ -912,16 +958,18 @@ async function addComment() {
     if (!txt) return;
 
     let arr = activeVideo.comments ? (typeof activeVideo.comments === 'string' ? JSON.parse(activeVideo.comments) : activeVideo.comments) : [];
-    const newCom = { id: Date.now(), user: currentUser, text: txt, parentId: activeReplyId || null };
+    const newCom = { id: Date.now().toString(36) + Math.random().toString(36).substr(2), user: currentUser, text: txt, parentId: activeReplyId || null };
     arr.push(newCom);
 
     const { error } = await supabaseClient.from('videos').update({ comments: JSON.stringify(arr) }).eq('id', activeVideo.id);
     if (!error) {
+        const comp = arr.filter(c => c.id === newCom.id);
+        const comId = comp[0].id;
         if (activeReplyId) {
             const parent = arr.find(x => x.id == activeReplyId);
-            if (parent && parent.user !== currentUser) pushNotif(parent.user, 'reply', { from: currentUser, content: txt, videoId: activeVideo.id, videoTitle: activeVideo.title });
+            if (parent && parent.user !== currentUser) pushNotif(parent.user, 'reply', { from: currentUser, content: txt, videoId: activeVideo.id, videoTitle: activeVideo.title, slug: activeVideo.video_id, commentId: comId });
         } else if (activeVideo.uploader !== currentUser) {
-            pushNotif(activeVideo.uploader, 'comment', { from: currentUser, content: txt, videoId: activeVideo.id, videoTitle: activeVideo.title });
+            pushNotif(activeVideo.uploader, 'comment', { from: currentUser, content: txt, videoId: activeVideo.id, videoTitle: activeVideo.title, slug: activeVideo.video_id, commentId: comId });
         }
         activeVideo.comments = JSON.stringify(arr);
         document.getElementById('com-input').value = "";
@@ -1040,6 +1088,13 @@ window.addEventListener('paste', (e) => {
     }
 });
 
+function generateVideoID() {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    let res = "";
+    for (let i = 0; i < 11; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+    return res;
+}
+
 async function handleUpload() {
     if (!currentUser) return openAuth();
     const v = currentUploadFile || document.getElementById('vid-input').files[0];
@@ -1072,7 +1127,11 @@ async function handleUpload() {
 
         if (!thumbUrl) thumbUrl = d.resource_type === 'video' ? d.secure_url.replace(/\.[^/.]+$/, ".jpg") : d.secure_url;
 
+        // Generate Random ID for URL routing
+        const vid_slug = generateVideoID();
+
         const { error: dbError } = await supabaseClient.from('videos').insert([{
+            video_id: vid_slug,
             title: document.getElementById('vid-name').value || v.name,
             uploader: currentUser,
             url: d.secure_url,
@@ -1200,7 +1259,13 @@ async function deleteVideo(id) { if (confirm("Delete?")) { await supabaseClient.
 function openUpload() { document.getElementById('modal-upload').style.display = 'flex'; }
 function closeUpload() { document.getElementById('modal-upload').style.display = 'none'; }
 function closeEdit() { document.getElementById('modal-edit').style.display = 'none'; }
-function closePlayer() { document.getElementById('player-page').style.display = 'none'; document.getElementById('p-target').innerHTML = ""; }
+function closePlayer() { 
+    document.getElementById('player-page').style.display = 'none'; 
+    document.getElementById('p-target').innerHTML = ""; 
+    // Clear URL when closing
+    const newUrl = window.location.origin + window.location.pathname;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+}
 
 async function pinVideo(id) {
     if (!confirm("Pin this video to the top of the Home page globally?")) return;
@@ -1495,9 +1560,16 @@ function renderNotifs() {
         let sender = n.data.anon ? "Anonymous User" : n.data.from;
         let onClick = n.data.anon ? "" : `onclick="openProfile('${n.data.from}')" style="cursor:pointer; color:var(--primary);"`;
         
-        if (n.type === 'like') msg = `<b ${onClick}>${sender}</b> liked your video <i>"${truncate(n.data.videoTitle)}"</i>`;
-        if (n.type === 'comment') msg = `<b ${onClick}>${sender}</b> commented: <i>"${truncate(n.data.content, 30)}"</i>`;
-        if (n.type === 'reply') msg = `<b ${onClick}>${sender}</b> replied: <i>"${truncate(n.data.content, 30)}"</i>`;
+        let linkAction = "";
+        if (n.data.videoId) {
+            const slug = n.data.slug || n.data.videoId;
+            const cParam = n.data.commentId ? `&c=${n.data.commentId}` : '';
+            linkAction = `onclick="window.location.href='?v=${slug}${cParam}'" style="cursor:pointer;"`;
+        }
+
+        if (n.type === 'like') msg = `<span ${linkAction}><b ${onClick}>${sender}</b> liked your video <i>"${truncate(n.data.videoTitle)}"</i></span>`;
+        if (n.type === 'comment') msg = `<span ${linkAction}><b ${onClick}>${sender}</b> commented: <i>"${truncate(n.data.content, 30)}"</i></span>`;
+        if (n.type === 'reply') msg = `<span ${linkAction}><b ${onClick}>${sender}</b> replied: <i>"${truncate(n.data.content, 30)}"</i></span>`;
         if (n.type === 'sub') msg = `<b ${onClick}>${sender}</b> subscribed to you!`;
 
         return `<div class="notif-item" style="padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px; line-height:1.4;">
