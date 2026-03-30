@@ -529,22 +529,25 @@ async function adminResetPassword(user) {
     const key = document.getElementById('admin-key-input').value;
     const newPass = document.getElementById('admin-new-pass').value;
     
-    if (key !== 'theyarecem') return alert("Invalid Admin Key!");
-    if (!newPass) return alert("Please specify a new password.");
+    if (!key) return alert("Enter the Admin Key!");
+    if (!newPass || newPass.length < 6) return alert("Password must be at least 6 characters.");
 
-    const p = allProfiles.find(x => x.username === user);
-    if (!p) return alert("User not found.");
+    const btn = event.target;
+    btn.innerText = "Setting..."; btn.disabled = true;
 
-    if (p.email_lookup) {
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(p.email_lookup);
-        if (error) {
-            alert("Error sending reset email: " + error.message);
-        } else {
-            alert("A password reset email was sent directly to " + user + "'s email. This is the secure way to reset someone's password in Supabase.");
-        }
-    } else {
-        alert("User does not have a linked email to send the reset to.");
-    }
+    const { data, error } = await supabaseClient.rpc('admin_reset_password', {
+        p_username: user,
+        p_new_password: newPass,
+        p_admin_key: key
+    });
+
+    btn.innerText = "Set Password"; btn.disabled = false;
+
+    if (error) return alert("RPC Error: " + error.message + "\n\nMake sure you ran the SQL function in Supabase.");
+    if (data && data.startsWith('error:')) return alert("Failed: " + data.replace('error:', ''));
+    alert("✅ Password for " + user + " has been updated successfully!");
+    document.getElementById('admin-new-pass').value = '';
+    document.getElementById('admin-key-input').value = '';
 }
 
 async function assignRankToUser(u) {
