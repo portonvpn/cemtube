@@ -1634,7 +1634,7 @@ function applyGlobalBanner() {
     }
 }
 
-async function saveBanner() {
+async function broadcastGlobalBanner() {
     const txt = document.getElementById('admin-banner-text').value.trim();
     const col = document.getElementById('admin-banner-color').value;
     const data = { active: !!txt, text: txt, color: col };
@@ -2095,27 +2095,40 @@ window.handleCardHover = function(el) {
     if (document.body.classList.contains('mobile-low-perf')) return;
     try {
         const vid = el.querySelector('.hover-vid');
-        if (vid) { vid.playbackRate = 1.0; vid.play(); } // Removed 0.5x restriction
+        if (vid) { vid.playbackRate = 1.0; vid.play(); } 
         const img = el.querySelector('.v-img-prev');
-        if (img) img.style.opacity = 0;
+        if (img && vid) img.style.opacity = 0; // Only hide thumbnail if an actual video exists!
         
-        el.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
         el._hoverT = setTimeout(() => {
             el.originalZIndex = el.style.zIndex;
+            el.style.zIndex = '50'; // elevate card
             
-            // Smart collision detection for the massive 1.6x scale
-            const rect = el.getBoundingClientRect();
+            const thumbWrap = el.querySelector('.v-thumb-wrap');
+            if (!thumbWrap) return;
+
+            const rect = thumbWrap.getBoundingClientRect();
             let originX = '50%';
             let originY = '50%';
-            if (rect.left < 100) originX = '5%';
-            else if (window.innerWidth - rect.right < 100) originX = '95%';
-            if (rect.top < 100) originY = '20%'; // Slightly protect top
+            if (rect.left < 100) originX = '10%';
+            else if (window.innerWidth - rect.right < 100) originX = '90%';
+            if (rect.top < 100) originY = '20%'; 
+
+            thumbWrap.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            thumbWrap.style.transformOrigin = `${originX} ${originY}`;
+            thumbWrap.style.transform = 'scale(1.8)';
+            thumbWrap.style.boxShadow = '0 40px 80px rgba(0,0,0,1)';
+            thumbWrap.style.zIndex = '60';
             
-            el.style.transformOrigin = `${originX} ${originY}`;
-            el.style.transform = 'scale(1.6)';
-            el.style.zIndex = '50';
-            el.style.boxShadow = '0 40px 80px rgba(0,0,0,1)';
-        }, 5000); // 5 seconds popup delay
+            if (vid) {
+                vid.style.transition = '0.3s';
+                vid.style.objectFit = 'contain';
+                vid.style.background = '#000';
+            } else if (img) {
+                img.style.transition = '0.3s';
+                img.style.objectFit = 'contain';
+                img.style.background = '#000';
+            }
+        }, 3000); // 3 seconds popup delay
     } catch(e) {}
 };
 
@@ -2123,12 +2136,26 @@ window.handleCardLeave = function(el) {
     try {
         clearTimeout(el._hoverT);
         const vid = el.querySelector('.hover-vid');
-        if (vid) { vid.pause(); vid.currentTime = 0; }
+        if (vid) { 
+            vid.pause(); 
+            vid.currentTime = 0; 
+            vid.style.objectFit = 'cover';
+            vid.style.background = 'transparent';
+        }
         const img = el.querySelector('.v-img-prev');
-        if (img) img.style.opacity = 1;
+        if (img) {
+            img.style.opacity = 1;
+            img.style.objectFit = 'cover';
+            img.style.background = 'transparent';
+        }
         
-        el.style.transform = 'scale(1)';
         el.style.zIndex = el.originalZIndex || '1';
-        el.style.boxShadow = 'none';
+
+        const thumbWrap = el.querySelector('.v-thumb-wrap');
+        if (thumbWrap) {
+            thumbWrap.style.transform = 'scale(1)';
+            thumbWrap.style.boxShadow = 'none';
+            thumbWrap.style.zIndex = '1';
+        }
     } catch(e) {}
 };
