@@ -134,27 +134,7 @@
         <div class="side-item" style="color:var(--primary); margin-top:10px;" onclick="openUpload()">📤 Upload Video</div>
     </aside>
 
-    <nav id="mobile-nav">
-        <div class="mob-nav-item active" data-ctx="home" onclick="setContext('home', this)">
-            <div class="mob-icon">🏠</div>
-            <span>Home</span>
-        </div>
-        <div class="mob-nav-item" data-ctx="imageboard" onclick="setContext('imageboard', this)">
-            <div class="mob-icon">🖼️</div>
-            <span>Feeds</span>
-        </div>
-        <div class="mob-nav-item upload-circle" onclick="openUpload()">
-            <div class="mob-icon" style="font-size:24px; color:white;">+</div>
-        </div>
-        <div class="mob-nav-item" onclick="toggleNotifs()">
-            <div class="mob-icon">🔔</div>
-            <span>Alerts</span>
-        </div>
-        <div class="mob-nav-item" onclick="openProfile(currentUser)">
-            <div class="mob-icon">👤</div>
-            <span>Profile</span>
-        </div>
-    </nav>
+
     <main id="main-area" style="display:none;">
         <div id="view-home" class="page-view active">
             <div id="pinned-container"></div>

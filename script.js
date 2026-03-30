@@ -169,12 +169,10 @@ function setContext(ctx, el) {
         window.history.pushState({}, '', newUrl);
     }
 
-    document.querySelectorAll('.side-item, .mob-nav-item').forEach(i => {
+    document.querySelectorAll('.side-item').forEach(i => {
         i.classList.remove('active');
         if (i.getAttribute('data-ctx') === ctx) i.classList.add('active');
     });
-
-    try { closeSidebar(); } catch(e){}
     document.querySelectorAll('.page-view').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
     const target = document.getElementById(`view-${ctx === 'studio' || ctx === 'imageboard' ? 'home' : ctx}`);
     if (target) { target.classList.add('active'); target.style.display = 'block'; }
