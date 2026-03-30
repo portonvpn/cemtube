@@ -57,11 +57,18 @@ function formatName(u) {
     const isDev = DEV_USERS.includes(u);
     const badge = isDev ? `<span class="dev-badge">DEV</span>` : (p?.is_verified ? `<span class="badge">✓</span>` : '');
 
-    if (p && p.rank && allRanks.find(r => r.id === p.rank)) {
-        const rData = allRanks.find(r => r.id === p.rank).data;
-        const nameClass = `rank-name-${p.rank}`;
-        const b = `<span class="rank-badge-${p.rank}">${rData.badgeText}</span>`;
-        nameMain = `<span class="${nameClass}">${dName}</span> ${b}`;
+    if (p && p.rank) {
+        const r = allRanks.find(rk => rk.id === p.rank);
+        if (r && r.data) {
+            const rData = r.data;
+            const nameClass = `rank-name-${p.rank}`;
+            const extraClass = rData.hasGalaxy ? 'galaxy-rank' : '';
+            const b = `<span class="rank-badge-${p.rank} ${extraClass}">${rData.badgeText || ''}</span>`;
+            nameMain = `<span class="${nameClass}">${dName}</span> ${b}`;
+        } else {
+            const glow = isDev ? 'glow-text' : '';
+            nameMain = `<span class="${glow}">${dName}</span> ${badge}`;
+        }
     } else {
         const glow = isDev ? 'glow-text' : '';
         nameMain = `<span class="${glow}">${dName}</span> ${badge}`;
@@ -355,6 +362,7 @@ function updateRankCSS() {
     let css = `@keyframes rankBGMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } \n`;
     allRanks.forEach(rank => {
         const d = rank.data;
+        if (!d) return;
         css += `.rank-name-${rank.id} {
             font-weight: 800;
             ${d.nameColor ? (d.nameColor.includes('gradient') ? `background: ${d.nameColor}; -webkit-background-clip: text; -webkit-text-fill-color: transparent; color: transparent;` : `color: ${d.nameColor};`) : ''}
@@ -366,13 +374,36 @@ function updateRankCSS() {
             background: ${d.badgeBg || 'transparent'};
             color: ${d.badgeTextColor || 'white'};
             border-radius: ${d.badgeBorderRadius || 0}px;
-            box-shadow: 0 0 ${d.badgeGlowSize || 0}px ${d.badgeGlow || 'transparent'};
+            filter: drop-shadow(0 0 ${d.badgeGlowSize || 4}px ${d.badgeGlow || 'transparent'}); /* Fixed Boxy Glow with drop-shadow */
             ${(d.badgeBg && d.badgeBg.includes('gradient') && d.nameMoving) ? `background-size: 200% 200%; animation: rankBGMove 3s ease infinite;` : ''}
         }\n`;
     });
     let s = document.getElementById('dynamic-ranks');
     if (!s) { s = document.createElement('style'); s.id = 'dynamic-ranks'; document.head.appendChild(s); }
     s.innerHTML = css;
+}
+
+async function buyItem(id, cost) {
+    if (!currentUser) return openAuth();
+    const p = allProfiles.find(x => x.username === currentUser);
+    if (!p) return;
+    if ((p.coins || 0) < cost) return alert("Not enough CemCoins! Login daily to earn more.");
+
+    if (id === 'galaxy_bundle') {
+        const unlocked = p.unlocked_themes || [];
+        if (unlocked.includes('galaxy')) return alert("You already own the Galaxy Bundle!");
+        unlocked.push('galaxy');
+        const { error } = await supabaseClient.from('profiles').update({ coins: p.coins - cost, unlocked_themes: unlocked }).eq('username', currentUser);
+        if (error) alert(error.message);
+        else { alert("🌌 Galaxy Unlocked! You can now use Galaxy effects in Rank Creation."); fetchData(); }
+        return;
+    }
+    // Generic theme purchase
+    const unlocked = p.unlocked_themes || [];
+    if (unlocked.includes(id)) return alert("Already owned!");
+    unlocked.push(id);
+    await supabaseClient.from('profiles').update({ coins: p.coins - cost, unlocked_themes: unlocked }).eq('username', currentUser);
+    fetchData(); alert("Success!");
 }
 
 function renderAdminRanks() {
@@ -496,6 +527,15 @@ function updateLivePreview() {
     pName.style.backgroundSize = nMoving && nType === 'gradient' ? '200% 200%' : '100% 100%';
     pName.style.animation = nMoving && nType === 'gradient' ? 'rankBGMove 3s ease infinite' : 'none';
 
+    // Galaxy Toggle Update
+    const hasGal = document.getElementById('r-galaxy').checked;
+    pBadge.className = hasGal ? 'galaxy-rank' : ''; 
+    pBadge.style.display = 'inline-block';
+    pBadge.style.padding = '2px 6px';
+    pBadge.style.fontSize = '10px';
+    pBadge.style.fontWeight = '800';
+    pBadge.style.marginLeft = '6px';
+
     pBadge.innerText = document.getElementById('r-badge-text').value || 'BADGE';
     pBadge.style.color = document.getElementById('r-badge-text-col').value;
     pBadge.style.borderRadius = (parseInt(document.getElementById('r-badge-root-rad').value) || 0) + 'px';
@@ -537,6 +577,7 @@ function clearRankForm() {
     document.getElementById('r-badge-glow-c').value = '#000000';
     document.getElementById('r-badge-glow-size').value = 0;
     document.getElementById('r-badge-root-rad').value = 4;
+    document.getElementById('r-galaxy').checked = false;
 
     document.getElementById('r-delete-btn').style.display = 'none';
 
@@ -570,6 +611,7 @@ function editRank(id) {
     document.getElementById('r-badge-glow-c').value = raw.bgcol || '#000000';
     document.getElementById('r-badge-glow-size').value = d.badgeGlowSize || 0;
     document.getElementById('r-badge-root-rad').value = d.badgeBorderRadius || 0;
+    document.getElementById('r-galaxy').checked = !!d.hasGalaxy;
 
     document.getElementById('r-delete-btn').style.display = 'block';
 
@@ -608,6 +650,7 @@ async function saveRank() {
         badgeGlow: bgcol,
         badgeGlowSize: parseInt(document.getElementById('r-badge-glow-size').value) || 0,
         badgeBorderRadius: parseInt(document.getElementById('r-badge-root-rad').value) || 0,
+        hasGalaxy: document.getElementById('r-galaxy').checked,
         raw: { nType, nc1, nc2, bType, bc1, bc2, nglc, bgcol }
     };
 
@@ -822,11 +865,54 @@ async function toggleSub() {
     isSubbing = false;
 }
 
+let currentUploadFile = null;
+
+function handleFileSelect(input) {
+    const file = input.files[0];
+    if (file) setUploadFile(file);
+}
+
+function setUploadFile(file) {
+    currentUploadFile = file;
+    const hint = document.getElementById('paste-hint');
+    const preview = document.getElementById('paste-preview');
+    const img = document.getElementById('pasted-img');
+    const area = document.getElementById('paste-area');
+
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            img.src = e.target.result;
+            if (preview) preview.style.display = 'block';
+            if (hint) hint.innerHTML = `<b>SELECTED image:</b> ${file.name}`;
+            if (area) area.style.borderColor = 'var(--primary)';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        if (preview) preview.style.display = 'none';
+        if (hint) hint.innerHTML = `<b>SELECTED file:</b> ${file.name}`;
+        if (area) area.style.borderColor = 'var(--primary)';
+    }
+}
+
+window.addEventListener('paste', (e) => {
+    const modal = document.getElementById('modal-upload');
+    if (modal && modal.style.display === 'flex') {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (const item of items) {
+            if (item.type.indexOf('image') !== -1) {
+                const blob = item.getAsFile();
+                setUploadFile(new File([blob], `pasted_img_${Date.now()}.png`, { type: blob.type }));
+            }
+        }
+    }
+});
+
 async function handleUpload() {
     if (!currentUser) return openAuth();
-    const v = document.getElementById('vid-input').files[0];
+    const v = currentUploadFile || document.getElementById('vid-input').files[0];
     const tFile = document.getElementById('vid-thumb').files[0];
-    if (!v) return alert("Please select a file to upload!");
+    if (!v) return alert("Please select or PASTE a file to upload!");
 
     // Cloudinary usually limits unsigned uploads to ~10MB for free tiers
     if (v.size > 100 * 1024 * 1024) return alert("File is too large! Please keep it under 100MB depending on your Cloudinary limits.");
