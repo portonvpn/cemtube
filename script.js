@@ -356,7 +356,7 @@ function render(target = 'v-grid', list = null) {
             const pVid = allVideos.find(v => v.id == pinSet.data.videoId);
             if (pVid) {
                 pCont.innerHTML = `
-                    <div style="margin-bottom: 24px; border-radius: 12px; border: 2px solid var(--primary); box-shadow: 0 0 30px rgba(168, 85, 247, 0.3); overflow: hidden; background: #0a0a0a; position: relative; cursor: pointer; display: flex; flex-wrap: wrap;" onclick="playVideo('${pVid.id}')">
+                    <div style="margin-bottom: 24px; border-radius: 12px; border: 2px solid var(--primary); box-shadow: 0 0 30px rgba(168, 85, 247, 0.3); overflow: hidden; background: #0a0a0a; position: relative; cursor: pointer; display: flex; flex-wrap: wrap;" onclick="openVideo('${pVid.id}')">
                         <div style="position:absolute; top:15px; left:15px; background:var(--primary); color:white; padding:6px 16px; border-radius:100px; font-weight:900; font-size:12px; box-shadow:0 0 15px var(--primary); z-index:10; letter-spacing:1px;">📌 FEATURED</div>
                         ${DEV_USERS.includes(currentUser) ? `<div style="position:absolute; top:15px; right:15px; background:#e11d48; color:white; padding:6px 16px; border-radius:100px; font-weight:900; font-size:12px; z-index:10; cursor:pointer;" onclick="event.stopPropagation(); unpinVideo()">Unpin</div>` : ''}
                         
@@ -369,34 +369,35 @@ function render(target = 'v-grid', list = null) {
                                 <div class="v-avatar" style="${getAvatarStyle(pVid.uploader)}">${pVid.uploader[0]}</div>
                                 <div style="font-size:16px;">${formatName(pVid.uploader)}</div>
                             </div>
-                            <p style="color:var(--text-dim); font-size:13px; line-height:1.5; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;">${pVid.details || 'No description provided.'}</p>
+                            <div style="font-size:14px; color:var(--text-dim); line-height:1.6;">${pVid.details || 'No description provided.'}</div>
                         </div>
-                    </div>
-                `;
-            } else { if (pCont) pCont.innerHTML = ''; }
-        } else {
-            if (pCont) pCont.innerHTML = '';
+                    </div>`;
+            }
         }
     }
 
-    grid.innerHTML = d.map(v => {
-        const isOwner = v.uploader === currentUser;
-        const canEdit = DEV_USERS.includes(currentUser) || (isOwner && cP?.is_verified);
-
-        return `<div class="card">
-            <div class="dots-btn" onclick="event.stopPropagation(); toggleMenu(event,'${v.id}')">⋮</div>
-            <div id="menu-${v.id}" class="dropdown">
-                <div onclick="openProfile('${v.uploader}')">👤 Channel</div>
-                ${canEdit ? `<div onclick="openEdit('${v.id}','${v.title}','${encodeURIComponent(v.details || '')}')">📝 Edit</div><div onclick="deleteVideo('${v.id}')" style="color:red">🗑️ Delete</div>` : ''}
-                ${DEV_USERS.includes(currentUser) ? `<div onclick="pinVideo('${v.id}')" style="color:#0ea5e9">📌 Pin Video</div>` : ''}
+    let html = d.map(v => `
+        <div class="card" onclick="openVideo('${v.id}')">
+            <div class="v-thumb-wrap">
+                <img src="${v.thumb}" class="v-img-prev">
+                <div class="dots-btn" onclick="toggleMenu(event, '${v.id}')">⋮</div>
+                <div id="menu-${v.id}" class="dropdown">
+                    <div onclick="shareVideo(event, '${v.id}')">🔗 Share Link</div>
+                    ${(DEV_USERS.includes(currentUser) || v.uploader === currentUser) ? `<div onclick="openEdit('${v.id}', '${v.title}', '${encodeURIComponent(v.details || "")}')">✏️ Edit</div><div onclick="deleteVideo('${v.id}')">🗑️ Delete</div>` : ''}
+                    ${DEV_USERS.includes(currentUser) ? `<div onclick="pinVideo('${v.id}')">📌 Pin Globally</div>` : ''}
+                </div>
             </div>
-            <div class="v-thumb-wrap" onclick="playVideo('${v.id}')"><img src="${v.thumb}" class="v-img-prev"></div>
-            <div style="display:flex; gap:12px; padding:12px 0;">
-                <div class="v-avatar" style="${getAvatarStyle(v.uploader)}" onclick="event.stopPropagation(); openProfile('${v.uploader}')">${v.uploader ? v.uploader[0] : '?'}</div>
-                <div><div style="font-weight:700;">${v.title}</div><div style="font-size:12px;color:gray;display:flex;align-items:center;">${formatName(v.uploader)}</div></div>
+            <div style="display:flex; gap:12px; margin-top:12px;">
+                <div class="v-avatar" style="${getAvatarStyle(v.uploader)}" onclick="event.stopPropagation(); openProfile('${v.uploader}')">${v.uploader[0]}</div>
+                <div style="flex:1; overflow:hidden;">
+                    <div style="font-weight:700; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;" title="${v.title}">${v.title}</div>
+                    <div style="font-size:12px; color:var(--text-dim); margin-top:4px; display:flex; align-items:center;">
+                        ${formatName(v.uploader)}
+                    </div>
+                </div>
             </div>
-        </div>`;
-    }).join('');
+        </div>`).join('');
+    grid.innerHTML = html;
 }
 
 function handleSearch() {
@@ -869,7 +870,7 @@ function renderRecs() {
         return !(p && p.is_shadowbanned);
     });
     const l = validRecs.slice(0, 10);
-    rG.innerHTML = l.map(v => `<div class="rec-card" onclick="playVideo('${v.id}')"><div class="rec-thumb"><img src="${v.thumb}" style="width:100%;height:100%;object-fit:cover"></div><div class="rec-info"><div class="rec-title">${v.title}</div><div style="font-size:12px;color:gray;margin-top:4px;display:flex;align-items:center;">${formatName(v.uploader)}</div></div></div>`).join('');
+    rG.innerHTML = l.map(v => `<div class="rec-card" onclick="openVideo('${v.id}')"><div class="rec-thumb"><img src="${v.thumb}" style="width:100%;height:100%;object-fit:cover"></div><div class="rec-info"><div class="rec-title">${v.title}</div><div style="font-size:12px;color:gray;margin-top:4px;display:flex;align-items:center;">${formatName(v.uploader)}</div></div></div>`).join('');
 }
 
 function playNext() {
@@ -879,7 +880,7 @@ function playNext() {
         return !(p && p.is_shadowbanned);
     });
     const n = validRecs[0];
-    if (n) playVideo(n.id);
+    if (n) openVideo(n.id);
 }
 
 async function postComment() {
@@ -1743,3 +1744,5 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
         else { alert("Password successfully updated. You can now login."); logout(); }
     }
 });
+// Global alias to prevent "playVideo is not defined" errors during transition
+const playVideo = openVideo;
