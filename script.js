@@ -273,8 +273,12 @@ function handleRouting() {
 
     // 4. Tab selection (?tab=name) or fallback to home
     if (tab) {
-        const el = document.querySelector(`[onclick*="setContext('${tab}'"]`);
-        setContext(tab, el);
+        if (tab === 'admin' && !DEV_USERS.includes(currentUser)) {
+            setContext('home', document.querySelector('.side-item'));
+        } else {
+            const el = document.querySelector(`[onclick*="setContext('${tab}'"]`);
+            setContext(tab, el);
+        }
     } else {
         setContext('home', document.querySelector('.side-item'));
     }
@@ -356,6 +360,10 @@ function setContext(ctx, el) {
         if (!currentUser) return openAuth();
         renderSettings();
     } else if (ctx === 'admin') {
+        if (!DEV_USERS.includes(currentUser)) {
+            alert("ACCESS DENIED: Developer verification failed.");
+            return setContext('home');
+        }
         renderAdmin();
     } else if (ctx === 'marketplace') {
         renderMarketplace();

@@ -1,7 +1,9 @@
 {
   "rewrites": [
+    { "source": "/@:u", "has": [ { "type": "query", "key": "lp", "value": "1" } ], "destination": "/" },
+    { "source": "/", "has": [ { "type": "query", "key": "lp", "value": "1" } ], "destination": "/" },
     { "source": "/@:u", "destination": "/api/v?u=:u" },
     { "source": "/v/:v", "destination": "/api/v?v=:v" },
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/", "has": [ { "type": "query", "key": "v" } ], "destination": "/api/v" }
   ]
 }
