@@ -851,8 +851,17 @@ let activeReplyId = null;
 function openReply(id, user) {
     activeReplyId = id;
     const inp = document.getElementById('com-input');
-    inp.focus();
-    inp.placeholder = `Replying to @${user}...`;
+    if (inp) { inp.focus(); inp.placeholder = `Replying to @${user}...`; }
+    const hint = document.getElementById('reply-hint');
+    if (hint) hint.style.display = 'block';
+}
+
+function cancelReply() {
+    activeReplyId = null;
+    const inp = document.getElementById('com-input');
+    if (inp) inp.placeholder = 'Add a public comment...';
+    const hint = document.getElementById('reply-hint');
+    if (hint) hint.style.display = 'none';
 }
 
 async function addComment() {
@@ -908,6 +917,7 @@ async function handleLike() {
     }
 
     await supabaseClient.from('videos').update({ likes: n }).eq('id', activeVideo.id);
+    pushNotif(activeVideo.uploader, 'like', { from: currentUser, videoId: activeVideo.id, videoTitle: activeVideo.title });
     isLiking = false;
 }
 
@@ -930,6 +940,7 @@ async function toggleSub() {
         b.classList.add('active');
         b.innerText = 'SUBSCRIBED';
         localSubs.push(activeVideo.uploader);
+        pushNotif(activeVideo.uploader, 'sub', { from: currentUser });
     } else {
         n = Math.max(0, n - 1);
         b.classList.remove('active');
