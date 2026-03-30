@@ -4,6 +4,16 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = localStorage.getItem('cem_user'), allVideos = [], allProfiles = [], allRanks = [], allSettings = [], allAudit = [], currentCtx = 'home', authMode = 'login', activeVideo = null, editingId = null;
 
 // Initial UI Boot
+function applyMobilePerfRule() {
+    if ((window.innerWidth <= 900 || navigator.userAgent.toLowerCase().includes('mobi')) && localStorage.getItem('cem_mobile_anim') !== 'true') {
+        document.body.classList.add('mobile-low-perf');
+    } else {
+        document.body.classList.remove('mobile-low-perf');
+    }
+}
+applyMobilePerfRule();
+window.addEventListener('resize', applyMobilePerfRule);
+
 try {
     const main = document.getElementById('main-area');
     const nav = document.getElementById('nav-bar');
@@ -438,14 +448,10 @@ function render(target = 'v-grid', list = null) {
         }
     }
 
-    // Create high-performance hover-play attribute
-    const playLogic = `try { this.querySelector('.hover-vid').play(); this.querySelector('.hover-vid').playbackRate = 0.5; this.querySelector('.v-img-prev').style.opacity = 0; } catch(e){}`;
-    const pauseLogic = `try { this.querySelector('.hover-vid').pause(); this.querySelector('.hover-vid').currentTime = 0; this.querySelector('.v-img-prev').style.opacity = 1; } catch(e){}`;
-
     let html = d.map(v => `
-        <div class="card" onclick="openVideo('${v.id}')" onmouseenter="${playLogic}" onmouseleave="${pauseLogic}">
+        <div class="card" onclick="openVideo('${v.id}')" onmouseenter="handleCardHover(this)" onmouseleave="handleCardLeave(this)" style="position:relative;">
             <div class="v-thumb-wrap">
-                <img src="${v.thumb}" class="v-img-prev" style="transition:0.3s;">
+                <img src="${v.thumb}" class="v-img-prev" style="transition:0.3s; width:100%; height:100%; object-fit:cover;">
                 ${v.url && !v.url.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? `<video src="${v.url}" class="hover-vid" muted loop playsinline preload="none" style="width:100%; height:100%; object-fit:cover; position:absolute; inset:0;"></video>` : ''}
                 <div class="dots-btn" onclick="toggleMenu(event, '${v.id}')">⋮</div>
                 <div id="menu-${v.id}" class="dropdown">
@@ -1272,11 +1278,8 @@ function renderSubscriptions() {
         pVideos.sort((a,b) => b.id - a.id);
         const latest = pVideos.slice(0, 4);
 
-        const playLogic = `try { this.querySelector('.hover-vid').play(); this.querySelector('.hover-vid').playbackRate = 0.5; this.querySelector('.v-img-prev').style.opacity = 0; } catch(e){}`;
-        const pauseLogic = `try { this.querySelector('.hover-vid').pause(); this.querySelector('.hover-vid').currentTime = 0; this.querySelector('.v-img-prev').style.opacity = 1; } catch(e){}`;
-
         let vHtml = latest.map(v => `
-            <div class="card" onclick="openVideo('${v.id}')" onmouseenter="${playLogic}" onmouseleave="${pauseLogic}" style="min-width:220px; max-width:250px; cursor:pointer;">
+            <div class="card" onclick="openVideo('${v.id}')" onmouseenter="handleCardHover(this)" onmouseleave="handleCardLeave(this)" style="min-width:220px; max-width:250px; cursor:pointer; position:relative;">
                 <div class="v-thumb-wrap" style="aspect-ratio:16/9; border-radius:12px; overflow:hidden; position:relative;">
                     <img src="${v.thumb}" class="v-img-prev" style="width:100%; height:100%; object-fit:cover; transition:0.3s;">
                     ${v.url && !v.url.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? `<video src="${v.url}" class="hover-vid" muted loop playsinline preload="none" style="width:100%; height:100%; object-fit:cover; position:absolute; inset:0;"></video>` : ''}
@@ -1991,6 +1994,16 @@ function renderSettings() {
 
     if (document.getElementById('set-anon')) document.getElementById('set-anon').checked = !!p.is_anonymous;
 
+    const mCard = document.getElementById('mobile-perf-card');
+    if (mCard) {
+        if (window.innerWidth <= 900 || navigator.userAgent.toLowerCase().includes('mobi')) {
+            mCard.style.display = 'block';
+            document.getElementById('set-mobile-anim').checked = localStorage.getItem('cem_mobile_anim') === 'true';
+        } else {
+            mCard.style.display = 'none';
+        }
+    }
+
     // Galaxy Visibility
     const gCard = document.getElementById('settings-galaxy-card');
     if (gCard) gCard.style.display = (p.unlocked_themes || []).includes('galaxy') ? 'block' : 'none';
@@ -2059,3 +2072,42 @@ function shareVideo(e, id) {
         alert("Link copied to clipboard!");
     }
 }
+
+function toggleMobileAnim() {
+    const isChecked = document.getElementById('set-mobile-anim').checked;
+    localStorage.setItem('cem_mobile_anim', isChecked ? 'true' : 'false');
+    applyMobilePerfRule();
+    alert(isChecked ? "Heavy animations have been ENABLED. Disable this if your device lags or heats up!" : "Animations disabled to save battery and ensure smooth scrolling.");
+}
+
+window.handleCardHover = function(el) {
+    if (document.body.classList.contains('mobile-low-perf')) return;
+    try {
+        const vid = el.querySelector('.hover-vid');
+        if (vid) { vid.playbackRate = 1.0; vid.play(); } // Removed 0.5x restriction
+        const img = el.querySelector('.v-img-prev');
+        if (img) img.style.opacity = 0;
+        
+        el.style.transition = '0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        el._hoverT = setTimeout(() => {
+            el.originalZIndex = el.style.zIndex;
+            el.style.transform = 'scale(1.15)';
+            el.style.zIndex = '50';
+            el.style.boxShadow = '0 20px 40px rgba(0,0,0,0.9)';
+        }, 5000); // 5 seconds popup delay
+    } catch(e) {}
+};
+
+window.handleCardLeave = function(el) {
+    try {
+        clearTimeout(el._hoverT);
+        const vid = el.querySelector('.hover-vid');
+        if (vid) { vid.pause(); vid.currentTime = 0; }
+        const img = el.querySelector('.v-img-prev');
+        if (img) img.style.opacity = 1;
+        
+        el.style.transform = 'scale(1)';
+        el.style.zIndex = el.originalZIndex || '1';
+        el.style.boxShadow = 'none';
+    } catch(e) {}
+};
