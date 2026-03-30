@@ -1447,10 +1447,25 @@ document.getElementById('nav-bar').style.display = 'flex';
 document.getElementById('main-area').style.display = 'block';
 
 if (currentUser) {
-    if (DEV_USERS.includes(currentUser)) document.getElementById('admin-nav-item').style.display = 'flex';
+    if (DEV_USERS.includes(currentUser)) {
+        const adminNav = document.getElementById('admin-nav-item');
+        if (adminNav) adminNav.style.display = 'flex';
+    }
     fetchData();
 } else {
-    fetchData(); // Guests can still fetch videos
+    fetchData();
+}
+
+// Global Navigation Restoration
+document.querySelectorAll('.side-item, .nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const ctx = item.getAttribute('data-ctx');
+        if (ctx) setContext(ctx, item);
+    });
+});
+
+function switchTo(v) {
+    setContext(v, document.querySelector(`.side-item[data-ctx="${v}"], .nav-item[data-ctx="${v}"]`));
 }
 
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
