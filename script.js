@@ -387,6 +387,21 @@ function renderAdmin() {
     renderAdminLogs();
 }
 
+function renderAdminLogs() {
+    const logArea = document.getElementById('admin-audit-log');
+    if (!logArea) return;
+    logArea.innerHTML = (allAudit || []).map(a => {
+        const date = new Date(a.created_at).toLocaleString();
+        return `<div class="audit-item">
+            <span style="color:gray">[${date}]</span> 
+            <b style="color:var(--primary)">${a.admin_user}</b> 
+            <span>${a.action}</span> on 
+            <b style="color:var(--text)">${a.target}</b>: 
+            <i style="color:var(--text-dim)">${a.details}</i>
+        </div>`;
+    }).join('') || "No administrative actions found.";
+}
+
 function searchAdminUser() {
     const query = document.getElementById('admin-user-search').value.trim().toLowerCase();
     const p = allProfiles.find(x => x.username.toLowerCase() === query);
