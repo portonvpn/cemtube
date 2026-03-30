@@ -3,6 +3,14 @@ const DEV_USERS = ["Zoro", "Redtree1222", "redtree"];
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = localStorage.getItem('cem_user'), allVideos = [], allProfiles = [], allRanks = [], allSettings = [], allAudit = [], currentCtx = 'home', authMode = 'login', activeVideo = null, editingId = null;
 
+// Initial UI Boot
+try {
+    const main = document.getElementById('main-area');
+    const nav = document.getElementById('nav-bar');
+    if (main) main.style.display = 'block';
+    if (nav) nav.style.display = 'flex';
+} catch(e) {}
+
 function toggleSidebar() {
     document.getElementById('side-bar').classList.toggle('open');
     document.getElementById('side-overlay').style.display = document.getElementById('side-bar').classList.contains('open') ? 'block' : 'none';
@@ -57,11 +65,18 @@ function formatName(u) {
     const isDev = DEV_USERS.includes(u);
     const badge = isDev ? `<span class="dev-badge">DEV</span>` : (p?.is_verified ? `<span class="badge">✓</span>` : '');
 
-    if (p && p.rank && allRanks.find(r => r.id === p.rank)) {
-        const rData = allRanks.find(r => r.id === p.rank).data;
-        const nameClass = `rank-name-${p.rank}`;
-        const b = `<span class="rank-badge-${p.rank}">${rData.badgeText}</span>`;
-        nameMain = `<span class="${nameClass}">${dName}</span> ${b}`;
+    if (p && p.rank) {
+        const r = allRanks.find(rk => rk.id === p.rank);
+        if (r && r.data) {
+            const rData = r.data;
+            const nameClass = `rank-name-${p.rank}`;
+            const extraClass = rData.hasGalaxy ? 'galaxy-rank' : '';
+            const b = `<span class="rank-badge-${p.rank} ${extraClass}">${rData.badgeText || ''}</span>`;
+            nameMain = `<span class="${nameClass}">${dName}</span> ${b}`;
+        } else {
+            const glow = isDev ? 'glow-text' : '';
+            nameMain = `<span class="${glow}">${dName}</span> ${badge}`;
+        }
     } else {
         const glow = isDev ? 'glow-text' : '';
         nameMain = `<span class="${glow}">${dName}</span> ${badge}`;
@@ -235,21 +250,40 @@ function updateNav() {
 }
 
 function setContext(ctx, el) {
-    if (profileAudio) { profileAudio.pause(); profileAudio = null; }
-    currentCtx = ctx; document.querySelectorAll('.side-item').forEach(i => i.classList.remove('active'));
-    if (el) el.classList.add('active'); closeSidebar();
-    document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+    if (profileAudio) { try { profileAudio.pause(); profileAudio = null; } catch(e){} }
+    currentCtx = ctx;
+
+    // Reset Sidebar UI
+    document.querySelectorAll('.side-item').forEach(i => i.classList.remove('active'));
+    if (el) el.classList.add('active');
+    try { closeSidebar(); } catch(e){}
+
+    // Hide all views
+    document.querySelectorAll('.page-view').forEach(p => {
+        p.classList.remove('active');
+        p.style.display = 'none';
+    });
+
+    const targetView = document.getElementById(`view-${ctx === 'studio' || ctx === 'imageboard' ? 'home' : ctx}`);
+    if (targetView) {
+        targetView.classList.add('active');
+        targetView.style.display = 'block';
+    }
+
     if (ctx === 'settings') {
-        document.getElementById('view-settings').classList.add('active'); renderSettings();
+        if (!currentUser) return openAuth();
+        renderSettings();
     } else if (ctx === 'admin') {
-        document.getElementById('view-admin').classList.add('active'); renderAdmin();
+        renderAdmin();
     } else if (ctx === 'marketplace') {
-        document.getElementById('view-marketplace').classList.add('active'); renderMarketplace();
+        renderMarketplace();
     } else if (ctx === 'announcements') {
-        document.getElementById('view-announcements').classList.add('active'); renderAnnouncements();
+        renderAnnouncements();
+    } else if (ctx === 'profile') {
+        // Handled by openProfile
     } else {
-        if ((ctx === 'studio' || ctx === 'settings') && !currentUser) return openAuth();
-        document.getElementById('view-home').classList.add('active'); render();
+        if (ctx === 'studio' && !currentUser) return openAuth();
+        render();
     }
 }
 
@@ -355,6 +389,7 @@ function updateRankCSS() {
     let css = `@keyframes rankBGMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } } \n`;
     allRanks.forEach(rank => {
         const d = rank.data;
+        if (!d) return;
         css += `.rank-name-${rank.id} {
             font-weight: 800;
             ${d.nameColor ? (d.nameColor.includes('gradient') ? `background: ${d.nameColor}; -webkit-background-clip: text; -webkit-text-fill-color: transparent; color: transparent;` : `color: ${d.nameColor};`) : ''}
@@ -366,13 +401,36 @@ function updateRankCSS() {
             background: ${d.badgeBg || 'transparent'};
             color: ${d.badgeTextColor || 'white'};
             border-radius: ${d.badgeBorderRadius || 0}px;
-            box-shadow: 0 0 ${d.badgeGlowSize || 0}px ${d.badgeGlow || 'transparent'};
+            filter: drop-shadow(0 0 ${d.badgeGlowSize || 4}px ${d.badgeGlow || 'transparent'}); /* Fixed Boxy Glow with drop-shadow */
             ${(d.badgeBg && d.badgeBg.includes('gradient') && d.nameMoving) ? `background-size: 200% 200%; animation: rankBGMove 3s ease infinite;` : ''}
         }\n`;
     });
     let s = document.getElementById('dynamic-ranks');
     if (!s) { s = document.createElement('style'); s.id = 'dynamic-ranks'; document.head.appendChild(s); }
     s.innerHTML = css;
+}
+
+async function buyItem(id, cost) {
+    if (!currentUser) return openAuth();
+    const p = allProfiles.find(x => x.username === currentUser);
+    if (!p) return;
+    if ((p.coins || 0) < cost) return alert("Not enough CemCoins! Login daily to earn more.");
+
+    if (id === 'galaxy_bundle') {
+        const unlocked = p.unlocked_themes || [];
+        if (unlocked.includes('galaxy')) return alert("You already own the Galaxy Bundle!");
+        unlocked.push('galaxy');
+        const { error } = await supabaseClient.from('profiles').update({ coins: p.coins - cost, unlocked_themes: unlocked }).eq('username', currentUser);
+        if (error) alert(error.message);
+        else { alert("🌌 Galaxy Unlocked! You can now use Galaxy effects in Rank Creation."); fetchData(); }
+        return;
+    }
+    // Generic theme purchase
+    const unlocked = p.unlocked_themes || [];
+    if (unlocked.includes(id)) return alert("Already owned!");
+    unlocked.push(id);
+    await supabaseClient.from('profiles').update({ coins: p.coins - cost, unlocked_themes: unlocked }).eq('username', currentUser);
+    fetchData(); alert("Success!");
 }
 
 function renderAdminRanks() {
@@ -495,6 +553,12 @@ function updateLivePreview() {
 
     pName.style.backgroundSize = nMoving && nType === 'gradient' ? '200% 200%' : '100% 100%';
     pName.style.animation = nMoving && nType === 'gradient' ? 'rankBGMove 3s ease infinite' : 'none';
+
+    pBadge.style.display = 'inline-block';
+    pBadge.style.padding = '2px 6px';
+    pBadge.style.fontSize = '10px';
+    pBadge.style.fontWeight = '800';
+    pBadge.style.marginLeft = '6px';
 
     pBadge.innerText = document.getElementById('r-badge-text').value || 'BADGE';
     pBadge.style.color = document.getElementById('r-badge-text-col').value;
@@ -822,11 +886,54 @@ async function toggleSub() {
     isSubbing = false;
 }
 
+let currentUploadFile = null;
+
+function handleFileSelect(input) {
+    const file = input.files[0];
+    if (file) setUploadFile(file);
+}
+
+function setUploadFile(file) {
+    currentUploadFile = file;
+    const hint = document.getElementById('paste-hint');
+    const preview = document.getElementById('paste-preview');
+    const img = document.getElementById('pasted-img');
+    const area = document.getElementById('paste-area');
+
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            img.src = e.target.result;
+            if (preview) preview.style.display = 'block';
+            if (hint) hint.innerHTML = `<b>SELECTED image:</b> ${file.name}`;
+            if (area) area.style.borderColor = 'var(--primary)';
+        }
+        reader.readAsDataURL(file);
+    } else {
+        if (preview) preview.style.display = 'none';
+        if (hint) hint.innerHTML = `<b>SELECTED file:</b> ${file.name}`;
+        if (area) area.style.borderColor = 'var(--primary)';
+    }
+}
+
+window.addEventListener('paste', (e) => {
+    const modal = document.getElementById('modal-upload');
+    if (modal && modal.style.display === 'flex') {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (const item of items) {
+            if (item.type.indexOf('image') !== -1) {
+                const blob = item.getAsFile();
+                setUploadFile(new File([blob], `pasted_img_${Date.now()}.png`, { type: blob.type }));
+            }
+        }
+    }
+});
+
 async function handleUpload() {
     if (!currentUser) return openAuth();
-    const v = document.getElementById('vid-input').files[0];
+    const v = currentUploadFile || document.getElementById('vid-input').files[0];
     const tFile = document.getElementById('vid-thumb').files[0];
-    if (!v) return alert("Please select a file to upload!");
+    if (!v) return alert("Please select or PASTE a file to upload!");
 
     // Cloudinary usually limits unsigned uploads to ~10MB for free tiers
     if (v.size > 100 * 1024 * 1024) return alert("File is too large! Please keep it under 100MB depending on your Cloudinary limits.");
@@ -1073,6 +1180,33 @@ async function logAudit(action, target, details) {
     await supabaseClient.from('audit_logs').insert([{ admin_user: currentUser, action, target, details }]);
 }
 
+function renderProfile(u) {
+    const p = allProfiles.find(x => x.username === u);
+    if (!p) return;
+
+    let socHtml = '';
+    let soc = p.social_links || {};
+    if (typeof soc === 'string') try { soc = JSON.parse(soc); } catch(e){soc={};}
+
+    if (soc.yt) socHtml += `<a href="https://www.youtube.com/${soc.yt.startsWith('@') ? soc.yt : '@'+soc.yt}" target="_blank"><img src="youtube.png" class="social-link-icon"></a>`;
+    if (soc.ig) socHtml += `<a href="https://www.instagram.com/${soc.ig}/" target="_blank"><img src="instagram.png" class="social-link-icon"></a>`;
+    if (soc.tiktok) socHtml += `<a href="https://www.tiktok.com/${soc.tiktok.startsWith('@') ? soc.tiktok : '@'+soc.tiktok}" target="_blank"><img src="tiktok.png" class="social-link-icon"></a>`;
+    if (soc.discord) socHtml += `<img src="discord.png" class="social-link-icon" onclick="alert('Discord: ${soc.discord}')" style="cursor:help;">`;
+
+    const galaxyClass = (p.unlocked_themes || []).includes('galaxy_active') ? 'galaxy-profile' : '';
+
+    return `
+        <div class="video-card ${galaxyClass}" style="padding:15px; text-align:center;">
+            <div class="v-avatar" style="width:80px; height:80px; font-size:32px; margin:0 auto 10px; ${getAvatarStyle(p.username)}">${p.username[0]}</div>
+            ${formatName(p.username)}
+            <p style="font-size:12px; color:var(--text-dim); margin-top:10px;">${p.bio || 'No bio yet.'}</p>
+            <div style="display:flex; justify-content:center; gap:12px; margin-top:15px;">
+                ${socHtml}
+            </div>
+        </div>
+    `;
+}
+
 async function toggleShadowban(u) {
     const p = allProfiles.find(x => x.username === u);
     if (!p) return;
@@ -1179,6 +1313,7 @@ async function deleteAnnouncement(id) {
 }
 
 const MARKET_THEMES = [
+    { id: 'galaxy', name: 'Elite Galaxy Bundle', price: 2500, color: 'linear-gradient(to bottom, #a855f7, #6441a5)' },
     { id: 'creamy', name: 'Creamy Gold', price: 1000, color: '#d4a373' },
     { id: 'tropical', name: 'Animated Tropical', price: 2500, color: 'linear-gradient(135deg, #f15bb5, #fee440)' },
     { id: 'rainbow', name: 'Animated Rainbow', price: 5000, color: 'linear-gradient(45deg,red,orange,yellow,green,blue,purple)' },
@@ -1193,8 +1328,9 @@ function renderMarketplace() {
     let html = '';
     MARKET_THEMES.forEach(t => {
         const isOwned = unlocked.includes(t.id);
-        html += `<div class="theme-item" style="border-top:4px solid ${t.color.includes('gradient') ? '#fff' : t.color}">
-            <h3 style="margin-top:0">${t.name}</h3>
+        const style = t.id === 'galaxy' ? `border:2px solid #a855f7; background:rgba(168, 85, 247, 0.1);` : `border-top:4px solid ${t.color.includes('gradient') ? '#fff' : t.color};`;
+        html += `<div class="theme-item" style="${style} padding:20px; border-radius:12px; text-align:center;">
+            <h3 style="margin-top:0">${t.id === 'galaxy' ? '🌌 ' : ''}${t.name}</h3>
             ${isOwned ?
                 `<button class="primary-btn" style="background:#222; cursor:default">Purchased</button>` :
                 `<button class="primary-btn" onclick="buyTheme('${t.id}', ${t.price})">Buy for 🪙 ${t.price}</button>`
@@ -1203,14 +1339,7 @@ function renderMarketplace() {
     });
     document.getElementById('market-grid').innerHTML = html;
 
-    let setHtml = `
-      <div class="theme-btn" style="background:#a855f7" onclick="setTheme('default')">Default</div>
-      <div class="theme-btn" style="background:#e11d48" onclick="setTheme('midnight-red')">Midnight Red</div>
-      <div class="theme-btn" style="background:#0ea5e9" onclick="setTheme('ocean')">Ocean Blue</div>
-      <div class="theme-btn" style="background:#10b981" onclick="setTheme('forest')">Forest Green</div>
-      <div class="theme-btn" style="background:#f59e0b" onclick="setTheme('eclipse')">Eclipse Orange</div>
-      <div class="theme-btn" style="background:#6366f1" onclick="setTheme('abyss')">Deep Abyss</div>
-    `;
+    let setHtml = `<div class="theme-btn" style="background:#a855f7" onclick="setTheme('default')">Default (Purple)</div>`;
     MARKET_THEMES.forEach(t => {
         if (unlocked.includes(t.id)) {
             setHtml += `<div class="theme-btn" style="background:${t.color}" onclick="setTheme('${t.id}')">${t.name}</div>`;
@@ -1252,6 +1381,36 @@ async function buyTheme(tid, price) {
     }
 }
 
+async function saveSocials() {
+    if (!currentUser) return;
+    const soc = {
+        yt: document.getElementById('set-yt').value.trim(),
+        discord: document.getElementById('set-discord').value.trim(),
+        ig: document.getElementById('set-ig').value.trim(),
+        tiktok: document.getElementById('set-tiktok').value.trim()
+    };
+    const music = document.getElementById('set-music').value.trim();
+    await supabaseClient.from('profiles').update({ 
+        social_links: soc,
+        music_url: music 
+    }).eq('username', currentUser);
+    fetchData(); alert("Settings updated!");
+}
+
+async function toggleGalaxyTheme(active) {
+    if (!currentUser) return;
+    const p = allProfiles.find(x => x.username === currentUser);
+    let unlocked = p.unlocked_themes || [];
+    if (active) {
+        if (!unlocked.includes('galaxy')) return alert("Purchase the Galaxy Bundle in Marketplace first!");
+        if (!unlocked.includes('galaxy_active')) unlocked.push('galaxy_active');
+    } else {
+        unlocked = unlocked.filter(t => t !== 'galaxy_active');
+    }
+    await supabaseClient.from('profiles').update({ unlocked_themes: unlocked }).eq('username', currentUser);
+    fetchData(); location.reload();
+}
+
 async function saveBio() {
     const b = document.getElementById('set-bio').value.trim();
     await supabaseClient.from('profiles').update({ bio: b }).eq('username', currentUser);
@@ -1271,107 +1430,38 @@ async function saveBanner() {
     btn.innerText = "Upload Banner"; btn.disabled = false; document.getElementById('set-banner').value = '';
 }
 
-async function saveVibe() {
-    const glow = document.getElementById('set-glow').value;
-    const font = document.getElementById('set-font').value;
-    await supabaseClient.from('profiles').update({ profile_glow: glow, profile_font: font }).eq('username', currentUser);
-    fetchData(); alert("Vibe Settings Saved!");
-}
-
-async function saveEliteVibe() {
-    let music = document.getElementById('set-music').value.trim();
-    const musicFile = document.getElementById('set-music-file').files[0];
-    const border = document.getElementById('set-border').value;
-    const socials = {
-        yt: document.getElementById('set-yt').value.trim(),
-        discord: document.getElementById('set-discord').value.trim(),
-        ig: document.getElementById('set-ig').value.trim(),
-        tiktok: document.getElementById('set-tiktok').value.trim()
-    };
-    
-    const selectedBadges = [];
-    document.querySelectorAll('.badge-chk:checked').forEach(c => selectedBadges.push(c.value));
-
-    // Handle Music Upload
-    if (musicFile) {
-        const fd = new FormData(); fd.append('file', musicFile); fd.append('upload_preset', UPLOAD_PRESET);
-        try {
-            const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: fd });
-            const d = await r.json();
-            if (d.secure_url) music = d.secure_url;
-        } catch (e) { console.error("Music Upload Error:", e); }
-    }
-
-    await supabaseClient.from('profiles').update({ 
-        music_url: music, 
-        profile_border: border, 
-        social_links: JSON.stringify(socials),
-        badges: JSON.stringify(selectedBadges)
-    }).eq('username', currentUser);
-    
-    document.getElementById('set-music-file').value = '';
-    fetchData(); alert("Elite Vibe Updated!");
-}
-
 let profileAudio = null;
-const BADGE_LIST = ["💎","🏆","👑","🔥","⭐","✨","🦄","🎮","🎧","📷","💻","🌍","🚀","🛸","🌌","🗿","🎭","🎨","🍕","🍩","🐉","🦈","👻","💀","👽","🤖","🦾","🌈","☀️","🍀","💎","🔮","🌀","⚡","🩸","🧿","🧸","🛡️","⚔️","🪓","🏹","💰","💎","📀","📼","💾","📡","🔭","🧪","🧬","💊","🧪","🧨","💊","🔮","🧸","💎","👑","🔥","🌌","🪐","🍄","🐲","🦉","🦁","🐯","🐺","🦊","🧊","🌋","🏔️","🏜️","🏖️","🗺️","🧭","⌛","⏳","🧿","🎴","🎭","🎬","🎥","📸","📼","📟","📻","🏮","🎏","🪬","🧿","🪩","💃","🕺","✨","💥","💨","🌀","🔱","☯️","🕉️","☪️","☮️","🕎","🔯","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓","🪐","🍀","🍄","🌵","🌲","🌴","🌻","🌑","🌪️","🌊","🌩️"];
 
 function renderSettings() {
     const p = allProfiles.find(x => x.username === currentUser);
     if (!p) return;
-
-    if (document.getElementById('set-name') && !document.getElementById('set-name').value) document.getElementById('set-name').value = p.display_name || '';
-    if (document.getElementById('set-bio') && !document.getElementById('set-bio').value) document.getElementById('set-bio').value = p.bio || '';
-    if (document.getElementById('set-glow')) document.getElementById('set-glow').value = p.profile_glow || '#a855f7';
-    if (document.getElementById('set-font')) document.getElementById('set-font').value = p.profile_font || 'inherit';
     
-    if (document.getElementById('set-music')) document.getElementById('set-music').value = p.music_url || '';
-    if (document.getElementById('set-border')) document.getElementById('set-border').value = p.profile_border || 'border-none';
+    document.getElementById('set-name').value = p.display_name || '';
+    document.getElementById('set-bio').value = p.bio || '';
+    document.getElementById('set-music').value = p.music_url || '';
+
+    let soc = p.social_links || {};
+    if (typeof soc === 'string') try { soc = JSON.parse(soc); } catch(e){soc={};}
     
-    const s = p.social_links ? (typeof p.social_links === 'string' ? JSON.parse(p.social_links) : p.social_links) : {};
-    if (document.getElementById('set-discord')) document.getElementById('set-discord').value = s.discord || '';
-    if (document.getElementById('set-yt')) document.getElementById('set-yt').value = s.yt || '';
-    if (document.getElementById('set-ig')) document.getElementById('set-ig').value = s.ig || '';
-    if (document.getElementById('set-tiktok')) document.getElementById('set-tiktok').value = s.tiktok || '';
+    if (document.getElementById('set-yt')) document.getElementById('set-yt').value = soc.yt || '';
+    if (document.getElementById('set-discord')) document.getElementById('set-discord').value = soc.discord || '';
+    if (document.getElementById('set-ig')) document.getElementById('set-ig').value = soc.ig || '';
+    if (document.getElementById('set-tiktok')) document.getElementById('set-tiktok').value = soc.tiktok || '';
 
-    const bGrid = document.getElementById('set-badges-grid');
-    if (bGrid && !bGrid.innerHTML) {
-        const ownedBadges = p.badges ? JSON.parse(p.badges) : [];
-        bGrid.innerHTML = BADGE_LIST.map((b, i) => `
-            <div style="display:flex; align-items:center; justify-content:center; position:relative;">
-                <input type="checkbox" class="badge-chk" value="${b}" id="bad-${i}" ${ownedBadges.includes(b) ? 'checked' : ''} style="position:absolute; opacity:0; cursor:pointer; inset:0;">
-                <label for="bad-${i}" style="font-size:24px; cursor:pointer;">${b}</label>
-            </div>
-        `).join('');
-    }
+    // Galaxy Visibility
+    const gCard = document.getElementById('settings-galaxy-card');
+    if (gCard) gCard.style.display = (p.unlocked_themes || []).includes('galaxy') ? 'block' : 'none';
 
-    let html = `
-        <div class="theme-btn" style="background:#a855f7" onclick="setTheme('default')">Default Purple</div>
-        <div class="theme-btn" style="background:#e11d48" onclick="setTheme('midnight-red')">Midnight Red</div>
-        <div class="theme-btn" style="background:#0ea5e9" onclick="setTheme('ocean')">Ocean Blue</div>
-        <div class="theme-btn" style="background:#10b981" onclick="setTheme('forest')">Forest Green</div>
-        <div class="theme-btn" style="background:#f59e0b" onclick="setTheme('eclipse')">Eclipse Orange</div>
-        <div class="theme-btn" style="background:#6366f1" onclick="setTheme('abyss')">Deep Abyss</div>
-    `;
-
-    let myThemes = [];
-    if (p.unlocked_themes) {
-        if (typeof p.unlocked_themes === 'string') myThemes = JSON.parse(p.unlocked_themes);
-        else myThemes = p.unlocked_themes;
-    }
-
+    // Themes Grid (Owned)
+    let unlocked = p.unlocked_themes || [];
+    let themeHtml = `<div class="theme-btn" style="background:#a855f7" onclick="setTheme('default')">Default Purple</div>`;
     MARKET_THEMES.forEach(t => {
-        if (myThemes.includes(t.id) || DEV_USERS.includes(currentUser)) {
-            if (t.id === 'frutiger') {
-                html += `<div class="theme-btn" style="background:${t.color}; border:2px solid gold; color:#000" onclick="setTheme('${t.id}'); document.getElementById('modal-frutiger').style.display='flex'">★ ${t.name}</div>`;
-            } else {
-                html += `<div class="theme-btn" style="background:${t.color}; border:2px solid gold; color:${t.id === 'creamy' ? '#000' : '#fff'}" onclick="setTheme('${t.id}')">★ ${t.name}</div>`;
-            }
+        if (unlocked.includes(t.id) && t.id !== 'galaxy') {
+            themeHtml += `<div class="theme-btn" style="background:${t.color}; border:2px solid gold;" onclick="setTheme('${t.id}')">★ ${t.name}</div>`;
         }
     });
-
     const grid = document.getElementById('my-themes-grid');
-    if (grid) grid.innerHTML = html;
+    if (grid) grid.innerHTML = themeHtml;
 }
 
 function renderAdminLogs() {
@@ -1386,14 +1476,18 @@ function renderAdminLogs() {
     }
 }
 
-document.getElementById('nav-bar').style.display = 'flex';
-document.getElementById('main-area').style.display = 'block';
 
-if (currentUser) {
-    if (DEV_USERS.includes(currentUser)) document.getElementById('admin-nav-item').style.display = 'flex';
-    fetchData();
-} else {
-    fetchData(); // Guests can still fetch videos
+if (currentUser && DEV_USERS.includes(currentUser)) {
+    const adminNav = document.getElementById('admin-nav-item');
+    if (adminNav) adminNav.style.display = 'flex';
+}
+fetchData();
+
+function switchTo(v) {
+    try { 
+        const el = document.querySelector(`.side-item[data-ctx="${v}"], .nav-item[data-ctx="${v}"]`);
+        setContext(v, el); 
+    } catch(e){}
 }
 
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
