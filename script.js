@@ -962,6 +962,22 @@ async function openVideo(id) {
     document.body.classList.add('theater-mode'); 
     const isYT = activeVideo.url.includes('youtube.com') || activeVideo.url.includes('youtu.be');
     
+    const ytAttr = document.getElementById('p-yt-attribution');
+    if (isYT) {
+        ytAttr.style.display = 'block';
+        ytAttr.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="background:var(--primary); color:white; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900;">ABYSS x YOUTUBE</span>
+                    <span style="font-weight:800; font-size:12px; opacity:0.6;">SOURCE CONTENT</span>
+                </div>
+                <a href="${activeVideo.url}" target="_blank" style="color:var(--primary); text-decoration:none; font-weight:800; font-size:12px;">VIEW ORIGINAL →</a>
+            </div>
+        `;
+    } else {
+        ytAttr.style.display = 'none';
+    }
+
     if (isYT) {
         const ytId = extractYouTubeID(activeVideo.url);
         t.innerHTML = `
@@ -1000,26 +1016,8 @@ async function openVideo(id) {
             playerVars: { 'controls': 0, 'disablekb': 1, 'modestbranding': 1, 'rel': 0, 'showinfo': 0, 'iv_load_policy': 3, 'fs': 0, 'autoplay': 1 },
             events: { 'onReady': onYTReady, 'onStateChange': onYTStateChange }
         });
-        
-        // Attribution Refactor
-        const ytAttr = document.getElementById('p-yt-attribution');
-        const isYT = activeVideo.url.includes('youtube.com') || activeVideo.url.includes('youtu.be');
-        
-        if (isYT) {
-            ytAttr.style.display = 'block';
-            ytAttr.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="background:var(--primary); color:white; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:900;">ABYSS x YOUTUBE</span>
-                        <span style="font-weight:800; font-size:12px; opacity:0.6;">SOURCE CONTENT</span>
-                    </div>
-                    <a href="${activeVideo.url}" target="_blank" style="color:var(--primary); text-decoration:none; font-weight:800; font-size:12px;">VIEW ORIGINAL →</a>
-                </div>
-            `;
-        } else {
-            ytAttr.style.display = 'none';
-        }
     } else {
+
 
         const isImg = activeVideo.url.match(/\.(jpg|jpeg|png|webp|gif)$/i);
         if (isImg) {
