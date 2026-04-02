@@ -34,6 +34,69 @@
 [data-theme="frutiger"] .comment-text { color: #222; }
 [data-theme="frutiger"] .rec-title { color: #111; }
 [data-theme="frutiger"] #player-page { background: rgba(255,255,255,0.4); backdrop-filter: blur(30px); }
+/* Liquid Glass Theme (30k Coins) */
+@property --angle-1 { syntax: "<angle>"; inherits: false; initial-value: -75deg; }
+@property --angle-2 { syntax: "<angle>"; inherits: false; initial-value: -45deg; }
+[data-theme="liquid-glass"] {
+  --primary: #555;
+  --bg: #d7d7d7;
+  --card: rgba(255, 255, 255, 0.4);
+  --nav: rgba(215, 215, 215, 0.85);
+  --border: rgba(255, 255, 255, 0.5);
+  --text: #323232;
+  --text-dim: #666;
+  --anim--hover-time: 400ms;
+  --anim--hover-ease: cubic-bezier(0.25, 1, 0.5, 1);
+}
+[data-theme="liquid-glass"] body {
+  background-color: #d7d7d7;
+  background-image: radial-gradient(rgba(0,0,0,0.1) 1px, transparent 0);
+  background-size: 30px 30px;
+  background-attachment: fixed;
+}
+[data-theme="liquid-glass"] .primary-btn {
+  all: unset;
+  cursor: pointer;
+  position: relative;
+  display: inline-block;
+  text-align: center;
+  box-sizing: border-box;
+  width: 100%;
+  pointer-events: auto;
+  z-index: 3;
+  background: linear-gradient(-75deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05));
+  border-radius: 999vw;
+  box-shadow: inset 0 0.125em 0.125em rgba(0, 0, 0, 0.05),
+    inset 0 -0.125em 0.125em rgba(255, 255, 255, 0.5),
+    0 0.25em 0.125em -0.125em rgba(0, 0, 0, 0.2),
+    0 0 0.1em 0.25em inset rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  padding: 16px;
+  font-weight: 800;
+  color: #323232;
+  transition: all var(--anim--hover-time) var(--anim--hover-ease);
+}
+[data-theme="liquid-glass"] .primary-btn:hover {
+  transform: scale(0.975);
+  backdrop-filter: blur(6px);
+  box-shadow: inset 0 0.125em 0.125em rgba(0, 0, 0, 0.05),
+    inset 0 -0.125em 0.125em rgba(255, 255, 255, 0.5),
+    0 0.15em 0.05em -0.1em rgba(0, 0, 0, 0.25),
+    0 0 0.05em 0.1em inset rgba(255, 255, 255, 0.5);
+}
+[data-theme="liquid-glass"] .card, [data-theme="liquid-glass"] .settings-card, [data-theme="liquid-glass"] .modal-box, [data-theme="liquid-glass"] aside, [data-theme="liquid-glass"] nav {
+    background: rgba(255, 255, 255, 0.3) !important;
+    backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05), inset 0 0 10px rgba(255, 255, 255, 0.5) !important;
+}
+[data-theme="liquid-glass"] input, [data-theme="liquid-glass"] textarea, [data-theme="liquid-glass"] select {
+    background: rgba(255, 255, 255, 0.5) !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    color: #323232 !important;
+}
+[data-theme="liquid-glass"] .logo span { color: #555; }
+[data-theme="liquid-glass"] .side-item:hover, [data-theme="liquid-glass"] .side-item.active { background: rgba(255, 255, 255, 0.5); color: #000; }
 
 @media (max-width: 900px) {
     [data-theme="frutiger"] body { background-attachment: scroll !important; }

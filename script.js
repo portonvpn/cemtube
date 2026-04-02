@@ -1941,7 +1941,8 @@ const MARKET_THEMES = [
     { id: 'tropical', name: 'Animated Tropical', price: 2500, color: 'linear-gradient(135deg, #f15bb5, #fee440)' },
     { id: 'rainbow', name: 'Animated Rainbow', price: 5000, color: 'linear-gradient(45deg,red,orange,yellow,green,blue,purple)' },
     { id: 'glitched', name: 'Glitched Hacker', price: 7500, color: '#00ff00' },
-    { id: 'frutiger', name: 'Frutiger Aero', price: 10000, color: 'linear-gradient(to bottom, #00a8ff, #005f99)' }
+    { id: 'frutiger', name: 'Frutiger Aero', price: 10000, color: 'linear-gradient(to bottom, #00a8ff, #005f99)' },
+    { id: 'liquid-glass', name: 'Liquid Glass', price: 30000, color: '#ffffff' }
 ];
 
 function renderMarketplace() {
